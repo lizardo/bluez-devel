@@ -1,0 +1,11 @@
+debian/tmp/usr/bin/bluez-*
+debian/tmp/usr/sbin/bccmd
+debian/tmp/usr/bin/l2ping
+debian/tmp/usr/bin/l2test
+debian/tmp/usr/bin/gaptest
+debian/tmp/usr/bin/rctest
+debian/tmp/usr/bin/ciptool
+debian/tmp/usr/bin/dund
+debian/tmp/usr/bin/hidd
+debian/tmp/usr/bin/pand
+debian/tmp/usr/sbin/hciattach

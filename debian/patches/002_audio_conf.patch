@@ -1,0 +1,20 @@
+--- audio/audio.conf	2009-05-03 23:38:47.000000000 +0300
++++ audio/audio.conf	2009-05-04 09:23:25.000000000 +0300
+@@ -5,7 +5,7 @@
+ [General]
+ 
+ # Switch to master role for incoming connections (defaults to true)
+-#Master=true
++Master=true
+ 
+ # If we want to disable support for specific services
+ # Defaults to supporting all implemented services
+@@ -13,7 +13,7 @@
+ 
+ # SCO routing. Either PCM or HCI (in which case audio is routed to/from ALSA)
+ # Defaults to HCI
+-#SCORouting=PCM
++SCORouting=PCM
+ 
+ # Automatically connect both A2DP and HFP/HSP profiles for incoming
+ # connections. Some headsets that support both profiles will only connect the

@@ -1,0 +1,29 @@
+--- src/main.conf	2008-12-24 21:41:48.000000000 +0200
++++ src/main.conf	2008-12-29 00:21:04.000000000 +0200
+@@ -1,7 +1,7 @@
+ [General]
+ 
+ # List of plugins that should not be loaded on bluetoothd startup
+-#DisablePlugins = network,input
++DisablePlugins = network,input,hal
+ 
+ # Default adaper name
+ # %h - substituted for hostname
+@@ -10,7 +10,7 @@
+ 
+ # Default device class. Only the major and minor device class bits are
+ # considered.
+-Class = 0x000100
++Class = 0x00020c
+ 
+ # How long to stay in discoverable mode before going back to non-discoverable
+ # The value is in seconds. Default is 180, i.e. 3 minutes.
+@@ -32,7 +32,7 @@
+ 
+ # What value should be assumed for the adapter Powered property when
+ # SetProperty(Powered, ...) hasn't been called yet. Defaults to true
+-InitiallyPowered = true
++InitiallyPowered = false
+ 
+ # Remember the previously stored Powered state when initializing adapters
+ RememberPowered = true

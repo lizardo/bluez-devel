@@ -1,0 +1,11 @@
+--- src/storage.c	2007-10-26 08:21:00.000000000 +0000
++++ src/storage.c	2007-10-26 08:20:56.000000000 +0000
+@@ -445,7 +445,7 @@
+ 
+ 	create_filename(filename, PATH_MAX, local, "linkkeys");
+ 
+-	create_file(filename, S_IRUSR | S_IWUSR);
++	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+ 
+ 	ba2str(peer, addr);
+ 

@@ -1,0 +1,7 @@
+usr/sbin
+usr/bin
+usr/lib/bluetooth/plugins
+usr/lib/alsa-lib
+usr/lib/gstreamer-0.10
+etc/bluetooth
+var/lib/bluetooth

@@ -1,0 +1,75 @@
+Source: bluez
+Section: admin
+Priority: optional
+Maintainer: Johan Hedberg <johan.hedberg@nokia.com>
+Build-Depends: debhelper (>= 5.0), autotools-dev, cdbs, libdbus-1-dev, libglib2.0-dev, libasound2-dev, libgstreamer-plugins-base0.10-dev
+Standards-Version: 3.7.2
+
+Package: bluez
+Architecture: any
+Depends: ${shlibs:Depends}, dbus
+Recommends: dsme, osso-product-info
+Provides: bluez-utils
+Replaces: bluez-utils
+Conflicts: bluez-utils
+Description: Bluetooth tools and daemons
+ This package contains tools and system daemons for using Bluetooth devices.
+ .
+ BlueZ is the official Linux Bluetooth protocol stack. It is an Open Source
+ project distributed under GNU General Public License (GPL).
+ .
+ More information is available at http://bluez.sourceforge.net/
+
+Package: bluez-test
+Architecture: any
+Priority: extra
+Depends: ${shlibs:Depends}, bluez (= ${binary:Version}), python, python2.5-gobject, python2.5-dbus
+Provides: bluez-utils-test
+Replaces: bluez-utils-test
+Conflicts: bluez-utils-test
+Description: testing tools for bluez
+ This package contains several test tools for testing the BlueZ stack
+
+Package: bluez-dbg
+Section: libdevel
+Architecture: any
+Priority: extra
+Depends: bluez (= ${binary:Version})
+Provides: bluez-utils-dbg
+Replaces: bluez-utils-dbg
+Conflicts: bluez-utils-dbg
+Description: Debug symbols for bluez
+ This package contains debug symbols for the bluez package.
+
+Package: libbluetooth3-dev
+Section: libdevel
+Provides: libbluetooth-dev
+Conflicts: libbluetooth-dev
+Replaces: libsdp2-dev (<= 1.5.2)
+Depends: libbluetooth3 (= ${binary:Version}), libc6-dev | libc-dev
+Priority: extra
+Architecture: any
+Description: Development files for using the BlueZ Linux Bluetooth library
+ BlueZ is the official Linux Bluetooth protocol stack. It is an Open Source
+ project distributed under GNU General Public License (GPL).
+ .
+ More information is available at http://bluez.sourceforge.net/
+
+Package: libbluetooth3
+Section: libs
+Depends: ${shlibs:Depends}
+Architecture: any
+Description: Library to use the BlueZ Linux Bluetooth stack
+ BlueZ is the official Linux Bluetooth protocol stack. It is an Open Source
+ project distributed under GNU General Public License (GPL).
+ .
+ More information is available at http://bluez.sourceforge.net/
+
+Package: libbluetooth3-dbg
+Section: libdevel
+Architecture: any
+Priority: extra
+Depends: libbluetooth3 (= ${binary:Version})
+Description: Debug symbols for libbluetooth3
+ This package contains debug symbols for the libbluetooth3 package.
+

@@ -1,0 +1,1092 @@
+bluez (4.59-0maemo2) unstable; urgency=low
+
+  * Remove upstart-dev dependency 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  5 Jan 2010 10:14:53 +0200
+
+bluez (4.59-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.58:
+     - Add values for Bluetooth 4.0 specification.
+     - Add SDP functions for HDP support.
+     - Add test scripts for input and audio.
+     - Fix missing close on BtIO create_io function.
+     - Fix sending incorrect AVDTP commands after timeout occurs.
+     - Fix timer removal when device disconnects unexpectedly.
+     - Fix Extended Inquiry Response record for Device ID.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 29 Dec 2009 09:35:58 +0200
+
+bluez (4.58-0maemo2) unstable; urgency=low
+
+  * Add missing AVDTP accept delay patch
+  * Fixes: NB#147580 - Cannot reconnect to MD-7W BT speakers
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 24 Nov 2009 13:04:27 +0200
+
+bluez (4.58-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.56:
+     - Fix crash when adapter agent exists during authentication.
+     - Fix CK-20W quirks for play and pause events.
+     - Fix unloading of drivers for uninitialized adapters.
+     - Fix debug message to use requested and not opened SEID.
+     - Fix codec selection for GStreamer plugin.
+     - Fix deleting of SDP records during service updates.
+     - Fix deleting of SDP records when a device is removed.
+     - Fix handling when the SDP record is modified on remote device.
+     - Fix potential buffer overflow by using snprintf instead of sprintf.
+     - Fix const declarations for some storage function parameters.
+  * Fixes: NB#144104 - Play/Pause can not be triggerred from CK-20W sometimes.
+  * Fixes: NB#147580 - Cannot reconnect to MD-7W BT speakers
+  * Fixes: NB#147426 - No audio on headset when making phone call, bluetoothd
+    crash
+  * Fixes: NB#146015 - Bluetooth daemon died after UI restart and failed
+    pairing with PC Suite
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 23 Nov 2009 09:49:57 +0200
+
+bluez (4.56-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.55:
+     - Add missing values from Bluetooth 3.0 specification.
+     - Add proper tracking of device paired status.
+     - Fix tracking of devices without permanently stored link key.
+     - Fix issue with link key removal after connection failures.
+     - Fix legacy pairing information based on remote host features.
+     - Fix off-by-one issue with AVDTP capability parsing.
+     - Fix AVRCP, AVCTP, AVDTP, A2DP and HFP version numbers.
+     - Fix agent canceling before calling agent_destroy.
+     - Fix service record parsing with an empty UUID list.
+     - Fix various SDP related memory leaks.
+  * Fixes: NB#142338 - Bluetooth crash during pairing
+  * Fixes: NB#142447 - Audio profile versions in SDP records are wrong
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sat, 10 Oct 2009 16:38:56 +0300
+
+bluez (4.55-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.53:
+     - Add support for POSIX capabilities dropping.
+     - Add special quirk for the Nokia CK-20W car kit.
+     - Fix error code handling for AVDTP SetConfiguration response.
+     - Fix updating out of range list when RSSI hasn't changed.
+     - Fix various memory leaks and unnecessary error checks.
+     - Add introspection interface to output of introspection calls.
+     - Fix stream handling when media transport disconnects prematurely.
+     - Fix command timeout handling when there's no stream.
+     - Fix headset_suspend_stream behavior for invalid states
+     - Fix issue with AVDTP ABORTING state transition.
+     - Fix issue with AVDTP suspend while closing.
+  * Fixes: NB#135934 - Media Player becomes unstable when using CK-20W to skip
+    to the next track
+  * Fixes: NB#137219 - Crash "bluetooththed-8A09-11-908" is displayed.
+  * Fixes: NB#140019 - Routing is delayed when disconnecting Jabra stereo BT
+    headset while in call
+  * Fixes: NB#139861 - bluetoothd startup script does not work on Harmattan 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  4 Oct 2009 14:26:24 +0300
+
+bluez (4.53-0maemo4) unstable; urgency=low
+
+  * Fix stream handling when transport terminated prematurely
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 15 Sep 2009 11:29:44 +0300
+
+bluez (4.53-0maemo3) unstable; urgency=low
+
+  * Another fix for name setting (make sure the quotes are not included) 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 15 Sep 2009 10:06:41 +0300
+
+bluez (4.53-0maemo2) unstable; urgency=low
+
+  * Fix name setting script (since first-boot-flag-tmp isn't used anymore)
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 14 Sep 2009 18:16:48 +0300
+
+bluez (4.53-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.52:
+     - Fix issue with telephony connection state notifications.
+     - Fix AVDTP stream leak for invalid media transport config.
+     - Fix audio connection authorization handling with timeouts.
+     - Fix race condition in authorizing audio connections.
+     - Fix device authorized setting for AVRCP-only connections.
+     - Fix duplicate attempts from device to connect signal channel.
+  * Add first-boot script to set the default name:
+     - Fixes: NB#133846 - Incorrect default Bluetooth name
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 14 Sep 2009 15:26:27 +0300
+
+bluez (4.52-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.51:
+     - Add AVCTP support to test utility.
+     - Fix AVDTP Abort when transport closes before response.
+     - Fix authorization when the audio profiles are slow to connect.
+     - Fix potential AVDTP reference leaks.
+  * Fixes: NB#135726 - "bluetoothd-71C3-11" crash observed
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  4 Sep 2009 02:26:27 +0300
+
+bluez (4.51-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.48:
+     - Add utility for basic AVDTP testing.
+     - Add support for configuring L2CAP FCS option.
+     - Fix discovery mode for CUPS 1.4.x and later.
+     - Fix global state tracking of audio service.
+     - Fix last issues with the new build system.
+     - Fix issue with missing manual pages in distribution.
+     - Fix issue with the configuration and state directories.
+     - Fix issue with creating include directory.
+     - Fix dependencies of include file generation.
+     - Add simple test program for basic GAP testing.
+     - Add support for confirmation requests to agent example.
+     - Add support for full non-recursive build.
+     - Add five millisecond delay for Simple Pairing auto-accept.
+     - Fix Class of Device setting when InitiallyPowered=false.
+  * Fixes: NB#134394 - Bluetoothd crashes when disconnecting Jabra BT3030
+    headset
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu,  3 Sep 2009 13:52:18 +0300
+
+bluez (4.48-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.47:
+     - Add library function for comparing UUID values.
+     - Add support for creating all plugins as builtins.
+     - Add support for async handling of service class changes.
+     - Add support for source interface to audio IPC.
+     - Fix device name settings when device is off or down.
+     - Fix issue with enabled SCO server when not necessary.
+     - Fix missing D-Bus access policy for CUPS backend.
+     - Fix discovery results of CUPS backend.
+     - Fix initialization handling of Maemo telephony.
+  * Fixes: NB#132614 - BH201 not connected to F4
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 17 Aug 2009 02:43:51 +0300
+
+bluez (4.47-0maemo3) unstable; urgency=low
+
+  * Backport fix for name setting when bt is off 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Wed,  5 Aug 2009 10:17:47 +0300
+
+bluez (4.47-0maemo2) unstable; urgency=low
+
+  * Backport fix for setting the adapter name when mode=off 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  4 Aug 2009 17:39:43 +0300
+
+bluez (4.47-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.45:
+     - Add support for RFKILL unblock handling.
+     - Add support for serial proxy configurations.
+     - Add support for caching service class updates.
+     - Fix issues with updating SDP service records.
+     - Fix usage of limited discoverable mode.
+     - Remove deprecated methods and signals for AudioSource.
+     - Add support for A2DP sink role.
+     - Fix clearing svc_cache before the adapter is up.
+     - Fix various pointer after free usages.
+     - Fix various memory leaks.
+  * Fixes: NB#128904 - Coverity: bad value used in compare for dbus error
+    status
+  * Fixes: NB#129071 - Coverity: risk of writing past buffers in
+    bluez-4.44/lib/sdp.c:access_proto_to_dataseq
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  2 Aug 2009 23:41:58 +0300
+
+bluez (4.45-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.44:
+     - Fix UDEV_DATADIR fallback if pkg-config fails.
+     - Fix adapter cleanup and setup prototypes.
+     - Fix double-free with out-of-range devices.
+     - Fix inband ring setting to be per-headset.
+     - Fix handling of Maemo CSD startup.
+  * Fixes: NB#110232 - Subscriber Identification is not working when call is
+    initiated using HF device
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sat, 11 Jul 2009 13:40:02 +0300
+
+bluez (4.44-0maemo2) unstable; urgency=low
+
+  * Backport patch for waiting for CSD before initializing telephony
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  7 Jul 2009 10:55:52 +0300
+
+bluez (4.44-0maemo1) unstable; urgency=low
+
+  * New upstream release (essentially the same as 4.43-0maemo5 except that
+    cleaner package due to no extra backported patches)
+  * Changes from ChangeLog since 4.43:
+     - Add some missing manual pages.
+     - Fix missing number prefix when installing udev rules.
+     - Fix program prefix used in Bluetooth udev rules.
+     - Fix three-way calling indicator order.
+     - Fix downgrade/upgrade of callheld indicator.
+     - Fix +CIEV sending when indicator value changes.
+     - Fix signal handling for Maemo telephony driver.
+     - Fix parsing issues with messages from Maemo CSD.
+     - Fix issue with duplicate active calls.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  7 Jul 2009 02:22:33 +0300
+
+bluez (4.43-0maemo5) unstable; urgency=low
+
+  * Fix callsetup/callheld order to pass remaining PTS test cases
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  6 Jul 2009 12:32:19 +0300
+
+bluez (4.43-0maemo4) unstable; urgency=low
+
+  * More telephony backports to pass PTS test cases 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  5 Jul 2009 00:16:55 +0300
+
+bluez (4.43-0maemo3) unstable; urgency=low
+
+  * Backport important telephony patches. 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  3 Jul 2009 21:56:38 +0300
+
+bluez (4.43-0maemo2) unstable; urgency=low
+
+  * Backported patch for avoiding duplicates in the active_calls list 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  3 Jul 2009 15:22:08 +0300
+
+bluez (4.43-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.42:
+     - Add support for udev based on-demand startup.
+     - Fix verbose error reporting of CUPS backend.
+     - Fix various string length issues.
+     - Fix issues with Maemo telephony driver.
+     - Fix another device setup and temporary flag issue.
+     - Fix and update example agent implementation.
+  * Fixes: NB#108570 - Bluez coverity findings
+  * Fixes: NB#124730 - The first call is ended after pressing answer/end key
+    on BT headset whenever it is active or on hold.
+  * Fixes: NB#126068 - Bluetooth PTS: TC_AG_ECC_BV_02_I fails (3-way calling
+    - multiparty bit in call list)
+  * Fixes: NB#125980 - Bluetooth PTS: TC_AG_TWC_BV_04_I fails (3-way calling
+    - conference call) 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  3 Jul 2009 09:53:38 +0300
+
+bluez (4.42-0maemo2) unstable; urgency=low
+
+  * Backport some important patches from upstream git
+  * Fixes: NB#121440 - Unable to pair with S60 device from UI after cancelling
+    pairing
+  * Fix +CCWA number quoting (qualification blocker)
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu, 25 Jun 2009 12:19:08 +0300
+
+bluez (4.42-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.41:
+     - Add TI WL1271 to Texas Instruments chip list.
+     - Add special udev mode to bluetoothd.
+     - Fix regression when there is no agent registered.
+     - Fix error return when bonding socket hang up.
+     - Fix SCO server socket for HFP handsfree role.
+     - Fix shutdown on SCO socket before closing.
+     - Fix shutdown on A2DP audio stream channel before closing.
+     - Fix issue with asserting on AVDTP reference count bugs.
+     - Fix authorization denied issue with certain headsets.
+     - Fix AVRCP UNITINFO and SUBUNIT INFO responses.
+     - Fix discovery cancel issues in case SDP discovery fails.
+  * Fixes: NB#122318 - Bluetoothd crashes during Codenomicon A2DP tests
+  * Fixes: NB#116115 - Bluetooth-"Pairing failed. Authentication time-out.\n
+    Try again?" dialog is not displayed
+  * Fixes: NB#119200 - BT-Cert: Several HFP test cases fails with PTS - SCO is
+    not disconnected
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 21 Jun 2009 20:49:03 +0300
+
+bluez (4.41-0maemo2) unstable; urgency=low
+
+  * Backport SDP failure handling patch from git (potential crash causer) 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  8 Jun 2009 18:12:46 +0300
+
+bluez (4.41-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.40:
+     - Fix pairing even if the ACL gets dropped before successful SDP.
+     - Fix regression which caused device to be removed after pairing.
+     - Fix HSP record fetching when remote device doesn't support it.
+     - Fix SDP discovery canceling when clearing hs->pending.
+     - Fix headset never connecting on the first attempt.
+     - Fix headset state tracking if bt_search_service() fails.
+     - Fix maximum headset connection count check.
+     - Fix AVDTP Discover timeout handling.
+     - Fix also UI_SET_KEYBIT for the new pause and play key codes.
+  * Fixes: NB#119158 - Linkkey and device information not saved with secure
+    simple pairing: general bonding use case
+  * Fixes: NB#120850 - Bluetooth crashed while trying to connect to a device 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  7 Jun 2009 13:04:27 +0300
+
+bluez (4.40-0maemo2) unstable; urgency=low
+
+  * Backport patch for HSP searching
+  * Fixes: NB#118638 - BT-Cert: Phone can't connect to HSP device or PTS
+    headset profile 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 26 May 2009 11:53:32 +0300
+
+bluez (4.40-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.39:
+     - Add telephony driver for oFono telephony stack.
+     - Add support for Dell specific HID proxy switching.
+     - Add support for running hid2hci from udev.
+     - Add mapping for AVRCP Play and Pause to dedicated key codes.
+     - Fix AVRCP keycodes to better match existing X keymap support.
+     - Fix various quoting issues within telephony support.
+     - Fix memory allocation issue when generating PDUs for SDP.
+     - Fix race condition on device removal.
+     - Fix non-cancelable issue with CreateDevice method.
+     - Fix non-working CancelDiscovery method call.
+  * Fixes: NB#105252 - Device is not correctly removed after pairing is
+  cancelled
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Wed, 20 May 2009 13:47:10 +0300
+
+bluez (4.39-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#115884 - Bluetooth daemon is running in acting dead mode
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 18 May 2009 01:34:29 +0300
+
+bluez (4.39-0maemo2) unstable; urgency=low
+
+  * Backport patch for audio driver probe
+  * Fixes: NB#114700 - Bluetoothd crashed when pairing with a2dp-only headset
+  * Backport patch for Device.CancelDiscovery
+  * Fixes: NB#114557 - Unable to cancel service discovery with
+    org.bluez.Device.CancelDiscovery() 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 18 May 2009 01:18:44 +0300
+
+bluez (4.39-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.38:
+     - Add workaround for dealing with unknown inquiry complete.
+     - Fix discovering when using software scheduler.
+     - Fix wrong NoInputNoOutput IO capability string.
+     - Fix race condition with agent during pairing.
+     - Fix agent cancellation for security mode 3 acceptor failure.
+     - Fix temporary flag removal when device creation fails.
+     - Fix hciattach to use ppoll instead of poll.
+     - Fix service class update when adapter is down.
+     - Fix service classes race condition during startup.
+     - Fix release of audio client before freeing the device.
+  * Fixes: NB#105252 - Device is not correctly removed after pairing is
+    cancelled
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 10 May 2009 17:11:11 +0300
+
+bluez (4.38-0maemo2) unstable; urgency=low
+
+  * Backport critical patches from git
+  * Fixes: NB#114700 - Bluetoothd crashed when pairing with a2dp-only headset
+  * Fixes: NB#114420 - Bluetoothd crash when removing Nokia BH-504 stereo HF
+    while connecting to it, mark 2
+  * Fixes: NB#108929 - Empty bluetooth Service Classes when bluetooth is
+    enabled for first time
+  * Fixes: NB#114227 - Bluetoothd crash when removing stereo audio device when
+    "Connected to device" banner is shown
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Wed,  6 May 2009 18:26:53 +0300
+
+bluez (4.38-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.37:
+     - Add support for builtin plugins.
+     - Add framework for adapter operations.
+     - Add constants for Enhanced Retransmission modes.
+     - Fix HCI socket leak in device_remove_bonding.
+     - Fix various format string issues.
+     - Fix crashes with various free functions.
+     - Fix issues with Headset and A2DP drivers to load again.
+     - Fix sending AVRCP button released passthrough messages
+     - Fix bug which prevent input devices to work after restart.
+     - Fix issue with interpretation of UUID-128 as channel.
+  * Fixes: NB#113533 - Bluetoothd crash when removing Nokia BH-504 stereo HF
+    while connecting to it
+  * Might fix: NB#108929, NB#110066
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  4 May 2009 11:15:44 +0300
+
+bluez (4.37-0maemo3) unstable; urgency=low
+
+  * Backport sink retry timer patch
+  * Fixes: NB#113132 - Got bluetoothd crash when connecting & deleting with
+    sony dr-bt22 stereo headset
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 27 Apr 2009 11:13:15 +0300
+
+bluez (4.37-0maemo2) unstable; urgency=low
+
+  * Backport crash fix for client_free (seen in corematic) 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 27 Apr 2009 00:12:06 +0300
+
+bluez (4.37-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.36:
+     - Add version value for Bluetooth 3.0 devices.
+     - Add additional L2CAP extended feature mask bits.
+     - Add support for loading plugins in priority order.
+     - Add support for more detailed usage of disconnect watches.
+     - Add support for AVRCP volume control.
+     - Add saturated clipping of SBC decoder output to 16-bit.
+     - Fix potentially infinite recursion of adapter_up.
+     - Fix SCO handling in the case of an incoming call.
+     - Fix input service to use confirm callback.
+     - Fix cleanup of temporary device entries from storage.
+  * Fixes: NB#112937 - Sync with any Phone is failing always
+  * Fixes: NB#112369 - Bluetoothd is not started automatically
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 26 Apr 2009 21:38:24 +0300
+
+bluez (4.36-0maemo2) unstable; urgency=low
+
+  * Backport format string patch (potential crash causer) 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sat, 18 Apr 2009 14:33:10 +0300
+
+bluez (4.36-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.35:
+     - Add proper tracking of AVCTP connect attempts.
+     - Add support to channel pattern in Serial interface.
+     - Fix A2DP sink crash if removing device while connecting.
+     - Fix error handling if HFP indicators aren't initialized.
+     - Fix segfault while handling an incoming SCO connection.
+     - Fix Serial.Disconnect to abort connection attempt.
+  * Backport patch for not forcing SCO up on incoming call
+  * Fixes: NB#111081 - Bluetoothd crash when removing stereo audio device
+    while connecting to it
+  * Fixes: NB#111205 - Bluetooth hands-free with carkit: After CHLD=11 unable
+    to answer new call anymore
+  * Fixes: NB#111292 - BT application stops responding after disconnecting BT
+    headset 
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 17 Apr 2009 13:54:14 +0300
+
+bluez (4.35-0maemo2) unstable; urgency=low
+
+  * Backport segfault fix when A2DP connected before HFP
+  * Fixes: NB#110999 - bluetoothd-11 crash observed while connecting BH501
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Wed, 15 Apr 2009 10:30:01 +0300
+
+bluez (4.35-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.34:
+     - Add support for Handsfree profile headset role.
+     - Add additional checks for open SEIDs from clients.
+     - Fix device removal while audio IPC client is connected.
+     - Fix device removal when an authorization request is pending.
+     - Fix incoming AVDTP connect while authorization in progress.
+     - Fix disconnection timers for audio support.
+     - Fix various potential NULL pointer deferences.
+     - Fix callheld indicator value for multiple calls.
+     - Fix voice number type usage.
+     - Fix GDBus watch handling.
+  * Fixes: NB#109974 - Bluetoothd crash when pairing & connecting stereo
+    headset multiple times
+  * Fixes: NB#108810 - Found Bluetooth crash while trying to delete the Mono
+    bluetooth headset
+  * Fixes: NB#104338 - Call waiting: unable to disconnect both calls from
+    headset
+  * Fixes: NB#97433 - Unable to answer a waiting call with BH-903 headset
+  * Fixes: NB#108898 - Wrong dbus exception when calling
+    CancelDeviceCreation() when device exists
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sat, 11 Apr 2009 21:48:36 +0300
+
+bluez (4.34-0maemo3) unstable; urgency=low
+
+  * Backport audio disconnection timer from git. Without this patch headsets
+    get disconnected very easily if the audio profiles stay idle for too long
+    (2 seconds for HFP and 20 seconds for A2DP).
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu,  2 Apr 2009 17:34:20 +0300
+
+bluez (4.34-0maemo2) unstable; urgency=low
+
+  * Backport org.bluez.Audio unregistration patch from git.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Wed,  1 Apr 2009 15:18:48 +0300
+
+bluez (4.34-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.33:
+     - Add support for version checks of plugins.
+     - Add support for class property on adapter interface.
+     - Add support for second SDP attempt after connection reset.
+     - Add support for more detailed audio states.
+     - Add support for HFP+A2DP auto connection feature.
+     - Add support for new and improved audio IPC.
+     - Add program for testing audio IPC interface.
+     - Fix various AVDTP qualification related issues.
+     - Fix broken SDP AttributeIdList parsing.
+     - Fix invalid memory access of SDP URL handling.
+     - Fix local class of device race conditions.
+     - Fix issue with periodic inquiry on startup.
+     - Fix missing temporary devices in some situations.
+     - Fix SBC alignment issue for encoding with four subbands.
+  * Fixes: NB#106229 - Empty Service Classes upon turning Bluetooth on for the
+    first time
+  * Fixes: NB#107772 - Unable to detect device from E71 phone switch
+  * Backport missing #include <signal.h> patch for ipctest.c
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 29 Mar 2009 22:40:39 +0300
+
+bluez (4.33-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.32:
+     - Add Paired property to the DeviceFound signals.
+     - Add support for Headset profile 1.2 version.
+     - Fix broken network configuration when IPv6 is disabled.
+     - Fix network regression that caused disconnection.
+     - Fix SDP truncation of strings with NULL values.
+     - Fix service discovery handling of CUPS helper.
+  * Fixes: NB#105904 - DeviceFound signal does not have "Paired" property
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 16 Mar 2009 03:58:30 +0200
+
+bluez (4.32-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.31:
+     - Fix broken SDP record handling.
+     - Fix SDP data buffer parsing.
+     - Fix more SDP memory leaks.
+     - Fix read scan enable calls.
+     - Fix A2DP stream handling.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  2 Mar 2009 07:49:19 +0200
+
+bluez (4.31-0maemo2) unstable; urgency=low
+
+  * Backport sdp_record_free fix from upstream git.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  1 Mar 2009 16:47:15 +0200
+
+bluez (4.31-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.30
+     - Add support for new BtIO helper library.
+     - Fix AVDTP session close issue.
+     - Fix SDP memory leaks.
+     - Fix various uninitialized memory issues.
+     - Fix duplicate signal emissions.
+     - Fix property changes request handling.
+     - Fix class of device storage handling.
+  * Fix CancelDeviceCreation. Fixes: NB#95796
+  * Take into use kernel DEFER_SETUP feature. Fixes: NB#100278
+  * Fix HSP AT command handling. Fixes: NB#102185
+  * Disable debug messages by default. Fixes: NB#103300
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu, 26 Feb 2009 10:21:09 +0200
+
+bluez (4.30-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.29: 
+     - Add CID field to L2CAP socket address structure.
+     - Fix reset of authentication requirements after bonding.
+     - Fix storing of link keys when using dedicated bonding.
+     - Fix storing of pre-Bluetooth 2.1 link keys.
+     - Fix resetting trust settings on every reboot.
+     - Fix handling of local name changes.
+     - Fix memory leaks in hciconfig and hcitool
+   * Put back missing bluez.upstart file. Fixes: NB#101298
+   * Fix Bluetooth 2.1 headset pairing. Fixes: NB#101239
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 13 Feb 2009 09:09:24 +0200
+
+bluez (4.29-0maemo2) unstable; urgency=low
+
+  * Backport patch for legacy link key storing.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  9 Feb 2009 13:16:23 +0000
+
+bluez (4.29-0maemo1) unstable; urgency=low
+
+  * New upstream release.
+  * Changes from ChangeLog since 4.28:
+     - Use AVRCP version 1.0 for now.
+     - Decrease AVDTP idle timeout to one second.
+     - Delay AVRCP connection when remote device connects A2DP.
+     - Add workaround for AVDTP stream setup with broken headsets.
+     - Add missing three-way calling feature bit for Handsfree.
+     - Fix handsfree callheld indicator updating.
+     - Fix parsing of all AT commands within the buffer.
+     - Fix authentication replies when disconnected.
+     - Fix handling of debug combination keys.
+     - Fix handling of changed combination keys.
+     - Fix handling of link keys when using no bonding.
+     - Fix handling of invalid/unknown authentication requirements.
+     - Fix closing of L2CAP raw socket used for dedicated bonding.
+   * Fix call waiting answering. Fixes: NB#97433
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  9 Feb 2009 05:46:25 +0000
+
+bluez (4.28-0maemo1) unstable; urgency=low
+
+  * New upstream release. Changes from ChangeLog since 4.27:
+     - Add AVDTP signal fragmentation support.
+     - Add more SBC performance optimizations.
+     - Add more SBC audio quality improvements.
+     - Use native byte order for audio plugins.
+     - Set the adapter alias only after checking the EIR data.
+     - Fix auto-disconnect issue with explicit A2DP connections.
+     - Fix invalid memory access of ALSA plugin.
+     - Fix compilation with -Wsign-compare.
+  * Fix Alias in EIR DeviceFound signals. Fixes: NB#99461
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  2 Feb 2009 04:14:47 +0000
+
+bluez (4.27-0maemo1) unstable; urgency=low
+
+  * New upstream release. Changes from ChangeLog since 4.26:
+     - Add more SBC optimization (MMX and ARM NEON).
+     - Add BT_SECURITY and BT_DEFER_SETUP definitions.
+     - Add support for deferred connection setup.
+     - Add support for fragmentation of data packets.
+     - Add option to trigger dedicated bonding.
+     - Follow MITM requirements from remote device.
+     - Require MITM for dedicated bonding if capabilities allow it.
+     - Fix IO capabilities for non-pairing and pairing cases.
+     - Fix no-bonding connections in non-bondable mode.
+     - Fix new pairing detection with SSP.
+     - Fix bonding with pre-2.1 devices and newer kernels.
+     - Fix LIAC setting while toggling Pairable property.
+     - Fix device creation for incoming security mode 3 connects.
+     - Fix crash within A2DP with bogus pointer.
+     - Fix issue with sdp_copy_record() function.
+     - Fix crash with extract_des() if sdp_uuid_extract() fails.
+  * Fix potential busyloop in SDP parsing. Fixes: NB#98224
+  * Fix auto-accept with BlueZ to BlueZ SSP. Fixes: NB#98235
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 18 Jan 2009 17:19:25 +0000
+
+bluez (4.26-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.25:
+     - Use of constant shift in SBC quantization code.
+     - Add possibility to analyze 4 blocks at once in encoder.
+     - Fix correct handling of frame sizes in the encoder.
+     - Fix for big endian problems in SBC codec.
+     - Fix audio client socket to always be non-blocking.
+     - Update telephony support for Maemo.
+  * Fix AT+CHLD handling. Fixes: NB#97433, NB#97438, NB#97447
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  9 Jan 2009 10:10:28 +0000
+
+bluez (4.25-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.24:
+     - Fix receiving data over the audio control socket.
+     - Fix subbands selection for joint-stereo in SBC encoder.
+     - Add new SBC analysis filter function.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 29 Dec 2008 13:35:48 +0000
+
+bluez (4.24-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.22:
+     - Fix signal emissions when removing adapters.
+     - Fix missing adapter signals on exit.
+     - Add support for bringing adapters down on exit.
+     - Add support for RememberPowered option.
+     - Add support for verbose compiler warnings.
+     - Add more options to SBC encoder.
+     - Update audio IPC for better codec handling.
+     - Fix bitstream optimization for SBC encoder.
+     - Fix length header values of IPC messages.
+     - Fix multiple coding style violations.
+     - Fix FindDevice to handle temporary devices.
+     - Add configuration option for DeviceID.
+     - Add support for InitiallyPowered option.
+     - Add missing signals for manager properties.
+     - Add telephony support for Maemo.
+  * Set InitiallyPowered to false. Fixes: NB#94805
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 28 Dec 2008 22:16:27 +0000
+
+bluez (4.22-0maemo3) unstable; urgency=low
+
+  * Backport patch for FindDevice from git. Fixes: NB#93747
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  9 Dec 2008 09:33:09 +0000
+
+bluez (4.22-0maemo2) unstable; urgency=low
+
+  * Backport battery status patch (potential segfault) from upstream
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  8 Dec 2008 22:20:35 +0000
+
+bluez (4.22-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.20:
+     - Add deny statements to D-Bus access policy.
+     - Add support for LegacyPairing property.
+     - Add support for global properties.
+     - Add more commands to telephony testing script.
+     - Add sender checks for serial and network interfaces.
+     - Remove deprecated methods and signals from input interface.
+     - Remove deprecated methods and signals from network interface.
+     - Remove OffMode option and always use device down.
+     - Fix adapter initialization logic.
+     - Fix adapter setup and start security manager early.
+     - Fix usage issue with first_init variable.
+   * Fix agent registration checks. Fixes: NB#94435
+   * Remove "deny" D-Bus policy for now since it might break something.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  5 Dec 2008 23:55:17 +0000
+
+bluez (4.20-0maemo2) unstable; urgency=low
+
+  * Backport adapter initialization fixes from git
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  1 Dec 2008 01:09:54 +0000
+
+bluez (4.20-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.19:
+     - Cleanup session handling.
+     - Cleanup mode setting handling.
+     - Fix issue with concurrent audio clients.
+     - Fix issue with HFP/HSP suspending.
+     - Fix AT result code syntax handling.
+     - Add Handsfree support for AT+NREC.
+     - Add PairableTimeout adapter property.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 30 Nov 2008 19:39:34 +0000
+
+bluez (4.19-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.18:
+     - Fix installation of manual pages for old daemons.
+     - Fix D-Bus signal emmissions for CreateDevice.
+     - Fix issues with UUID probing.
+     - Fix +BRSF syntax issue.
+     - Add Pairable adapter property.
+     - Add sdp_copy_record() library function.
+  * Fix any adapter authorization rejection. Fixes: NB#92220
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 21 Nov 2008 14:14:08 +0000
+
+bluez (4.18-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.17:
+     - Fix release before close issue with RFCOMM TTYs.
+     - Fix Connected property on input interface.
+     - Fix DeviceFound signals during initial name resolving.
+     - Fix service discovery handling.
+     - Fix duplicate UUID detection.
+     - Fix SBC gain mismatch and decoding handling.
+     - Add more options to SBC encoder and decoder.
+     - Add special any adapter object for service interface.
+     - Add variable prefix to adapter and device object paths.
+  * Fix org.bluez.Serial API. Fixes: NB#91493
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun,  9 Nov 2008 19:51:05 +0000
+
+bluez (4.17-0maemo2) unstable; urgency=low
+
+  * Update telephony-maemo.c to match new csd-call API. Fixes: NB#91677
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue,  4 Nov 2008 14:11:49 +0000
+
+bluez (4.17-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.16:
+     - Fix SBC encoder not writing last frame.
+     - Fix missing timer for A2DP suspend.
+     - Add more supported devices to hid2hci utility.
+     - Add additional functionality to Handsfree support.
+  * Add "INIT INFO" section to init script for upstart use
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 26 Oct 2008 18:06:03 +0000
+
+bluez (4.16-0maemo3) unstable; urgency=low
+
+  * Update telephony-maemo patch with call holding support
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu, 23 Oct 2008 15:00:25 +0000
+
+bluez (4.16-0maemo2) unstable; urgency=low
+
+  * Use telephony-maemo instead of telephony-dummy
+  * Implemented: NR#190894, NR#189578, NR#189579
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu, 23 Oct 2008 12:53:02 +0000
+
+bluez (4.16-0maemo1) unstable; urgency=low
+
+  * New upstream version (includes previously backported patches)
+  * Changes from ChangeLog since 4.15:
+     - Fix wrong parameter usage of watch callbacks.
+     - Fix parameters for callback upon path removal.
+     - Fix unloading of adapter drivers.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 21 Oct 2008 17:54:23 +0000
+
+bluez (4.15-0maemo3) unstable; urgency=low
+
+  * Backport fix for discovery sessions from git. Fixes: NB#90466
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Tue, 21 Oct 2008 15:23:20 +0000
+
+bluez (4.15-0maemo2) unstable; urgency=low
+
+  * Backport fixes from git for adapter driver unloading. Fixes: NB#90405
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 20 Oct 2008 11:42:18 +0000
+
+bluez (4.15-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.14:
+     - Fix various A2DP state machine issues.
+     - Fix some issues with the Handsfree error reporting.
+     - Fix format string warnings with recent GCC versions.
+     - Remove dependency on GModule.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 19 Oct 2008 23:29:59 +0000
+
+bluez (4.14-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.13:
+     - Fix types of property arrays.
+     - Fix potential crash with input devices.
+     - Fix PS3 BD remote input event generation.
+     - Allow dynamic adapter driver registration.
+     - Update udev rules.
+  * Change device class to phone/smartphone. Fixes: NB#89190
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 17 Oct 2008 01:55:05 +0300
+
+bluez (4.13-0maemo1) unstable; urgency=low
+
+  * New upstream versions with all fixes made during UPF31
+  * Changes from ChangeLog since 4.12:
+     - Fix service discovery and UUID handling.
+     - Fix bonding issues with Simple Pairing.
+     - Fix file descriptor misuse of SCO connections.
+     - Fix various memory leaks in the device handling.
+     - Fix AVCTP disconnect handling.
+     - Fix GStreamer modes for MP3 encoding.
+     - Add operator selection to Handsfree support.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 10 Oct 2008 15:52:42 +0000
+
+bluez (4.12-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.11:
+     - Fix crash with missing icon value.
+     - Fix error checks of HAL plugin.
+     - Fix SCO server socket cleanup on exit.
+     - Fix memory leaks from DBusPendingCall.
+     - Fix handling of pending authorization requests.
+     - Fix missing protocol UUIDs in record pattern.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  6 Oct 2008 17:21:00 +0000
+
+bluez (4.11-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.10:
+     - Change SCO server socket into a generic one.
+     - Add test script for dummy telephony plugin.
+     - Fix uninitialized reply of multiple GetProperties methods.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sat,  4 Oct 2008 21:32:19 +0000
+
+bluez (4.10-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Change from ChangeLog since 4.9:
+     - Fix memory leaks with HAL messages.
+     - Add more advanced handsfree features.
+     - Add properties to audio, input and network interfaces.
+     - Stop device discovery timer on device removal.
+  * Backport patch from git for GetProperties
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri,  3 Oct 2008 08:18:44 +0000
+
+bluez (4.9-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.8:
+     - Fix signals for Powered and Discoverable properties.
+     - Fix handling of Alias and Icon properties.
+     - Fix duplicate entries for service UUIDs.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 29 Sep 2008 12:02:30 +0000
+
+bluez (4.8-0maemo1) unstable; urgency=low
+
+  * New upstream version (includes patches in 4.7-0maemo2)
+  * Changes from ChangeLog since 4.7:
+     * Fix retrieving of formfactor value.
+     * Fix retrieving of local and remote extended features.
+     * Fix potential NULL pointer dereference during pairing.
+     * Fix crash with browsing due to a remotely initated pairing.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 29 Sep 2008 06:48:46 +0000
+
+bluez (4.7-0maemo2) unstable; urgency=low
+
+  * Backport two bluetoothd crasher fixes (related to pairing) from git.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Sun, 28 Sep 2008 21:00:31 +0000
+
+bluez (4.7-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.6
+     - Fix pairing and service discovery logic.
+     - Fix crashes during suspend and resume.
+     - Fix race condition within devdown mode.
+     - Add RequestSession and ReleaseSession methods.
+     - Add Powered and Discoverable properties.
+     - Add Devices property and deprecate ListDevices.
+     - Add workaround for a broken carkit from Nokia.
+  * Fix broken OffMode=DevDown logic. Fixes: NB#88773
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 26 Sep 2008 07:44:43 +0000
+
+bluez (4.6-0maemo2) unstable; urgency=low
+
+  * Make sure to include rctest and l2test in bluez-test
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 22 Sep 2008 23:49:25 +0000
+
+bluez (4.6-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.5:
+     - Fix Device ID record handling.
+     - Fix service browsing and storage.
+     - Fix authentication and encryption for input devices.
+     - Fix adapter name initialization.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 15 Sep 2008 20:35:46 +0000
+
+bluez (4.5-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.4:
+     - Fix initialization issue with new adapters.
+     - Send HID authentication request without blocking.
+     - Hide the verbose SDP debug behind SDP_DEBUG.
+     - Add extra UUIDs for service discovery.
+     - Add SCO server socket listener.
+     - Add authorization support to service plugin.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Fri, 12 Sep 2008 08:11:08 +0000
+
+bluez (4.4-0maemo2) unstable; urgency=low
+
+  * Fix some debian/control issues causing lintian warnings/errors
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  8 Sep 2008 13:06:27 +0000
+
+bluez (4.4-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.2:
+     - Add temporary fix for the CUPS compile issue.
+     - Add service-api.txt to distribution.
+     - Mention the variable prefix of an object path
+     - Add dummy driver for telephony support.
+     - Add support for discovery sessions.
+     - Add service plugin for external services.
+     - Various cleanups.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  8 Sep 2008 06:57:15 +0000
+
+bluez (4.2-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.1:
+     - Avoid memory copies in A2DP write routine.
+     - Fix broken logic with Simple Pairing check and old kernels.
+     - Allow non-bondable and outgoing SDP without agent.
+     - Only remove the bonding for non-temporary devices.
+     - Cleanup various unnecessary includes.
+     - Make more unexported functions static.
+     - Add basic infrastructure for gtk-doc support.
+  * Rename bluez-utils binary package to bluez to match debian naming
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon,  1 Sep 2008 09:33:59 +0000
+
+bluez (4.1-0maemo1) unstable; urgency=low
+
+  * New upstream version
+  * Changes from ChangeLog since 4.0:
+     - Add 30 seconds timeout to BNEP connection setup phase.
+     - Avoid memory copies in A2DP write routine for ALSA.
+     - Make sure to include compat/sdp.h in the distribution.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 11 Aug 2008 08:48:59 +0000
+
+bluez (4.0-0maemo2) unstable; urgency=low
+
+  * Fix configure parameters
+  * Fix init script
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu,  7 Aug 2008 14:50:44 +0000
+
+bluez (4.0-0maemo1) unstable; urgency=low
+
+  * First official release of the 4.x series.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Thu,  7 Aug 2008 08:24:00 +0000

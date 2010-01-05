@@ -1,0 +1,11 @@
+debian/tmp/etc/bluetooth/audio.conf
+debian/tmp/etc/bluetooth/main.conf
+debian/tmp/etc/dbus-1/system.d/*
+debian/tmp/usr/sbin/bluetoothd
+debian/tmp/usr/lib/alsa-lib/*.so
+debian/tmp/usr/lib/gstreamer-0.10/*.so
+debian/tmp/usr/bin/hcitool
+debian/tmp/usr/bin/sdptool
+debian/tmp/usr/bin/rfcomm
+debian/tmp/usr/sbin/hciconfig
+debian/tmp/etc/bluetooth/rfcomm.conf

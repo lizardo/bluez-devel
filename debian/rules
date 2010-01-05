@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+# build rules for bluez
+
+include /usr/share/cdbs/1/rules/buildcore.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk
+include /usr/share/cdbs/1/class/autotools.mk
+
+DEB_SHLIBDEPS_INCLUDE_libbluetooth3 = debian/libbluetooth3/usr/lib
+
+DEB_UPDATE_RCD_PARAMS_bluez = "start 56 2 3 4 . stop 74 0 1 5 6 ."
+
+DEB_CONFIGURE_EXTRA_FLAGS := --enable-test --enable-bccmd --enable-configfiles \
+				--enable-hidd --enable-alsa --enable-gstreamer \
+				--enable-audio --enable-input --enable-dund \
+				--enable-pand --enable-network --enable-serial \
+				--disable-manpages --disable-pcmcia-rules \
+				--disable-usb --disable-hid2hci --disable-cups \
+				--disable-pie --with-telephony=maemo
+
+install/bluez::
+	install -D -m 0644 audio/audio.conf $(DEB_DESTDIR)/etc/bluetooth/audio.conf
+
+install/bluez-test::
+	install -D -m 0755 test/simple-agent $(DEB_DESTDIR)/usr/bin/bluez-simple-agent
+	install -D -m 0755 test/test-adapter $(DEB_DESTDIR)/usr/bin/bluez-test-adapter
+	install -D -m 0755 test/test-device $(DEB_DESTDIR)/usr/bin/bluez-test-device
+	install -D -m 0755 test/test-discovery $(DEB_DESTDIR)/usr/bin/bluez-test-discovery
+	install -D -m 0755 test/test-manager $(DEB_DESTDIR)/usr/bin/bluez-test-manager
+	install -D -m 0755 test/test-serial $(DEB_DESTDIR)/usr/bin/bluez-test-serial
+	install -D -m 0755 test/test-audio $(DEB_DESTDIR)/usr/bin/bluez-test-audio
+	install -D -m 0755 test/test-input $(DEB_DESTDIR)/usr/bin/bluez-test-input
+	install -D -m 0755 test/list-devices $(DEB_DESTDIR)/usr/bin/bluez-list-devices
+	install -D -m 0755 test/test-telephony $(DEB_DESTDIR)/usr/bin/bluez-test-telephony
+	install -D -m 0755 test/gaptest $(DEB_DESTDIR)/usr/bin/gaptest

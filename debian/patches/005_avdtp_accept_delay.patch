@@ -1,0 +1,16 @@
+--- audio/avdtp.c	2009-10-10 07:17:28.000000000 +0300
++++ audio/avdtp-new.c	2009-11-16 13:31:52.000000000 +0200
+@@ -2221,6 +2221,13 @@
+ 		return;
+ 	}
+ 
++	/* Some devices, like the Nokia MD-7W Speakers are buggy and will fail
++	 * to reconnect if we accept the L2CAP connect request too quickly.
++	 * Therefore, wait for a short moment (in this case 50ms) before
++	 * accepting the connection
++	 */
++	usleep(50000);
++
+ 	if (!bt_io_accept(session->io, avdtp_connect_cb, session, NULL,
+ 								&err)) {
+ 		error("bt_io_accept: %s", err->message);
