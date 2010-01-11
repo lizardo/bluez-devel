@@ -1,3 +1,14 @@
+bluez (4.60-0maemo2) unstable; urgency=low
+
+  * maemo2 instead of maemo1 in order not to conflict with fremantle
+  * New upstream release
+  * Changes from ChangeLog since 4.59:
+     - Fix voice mailbox number reading from SIM.
+     - Fix some races with D-Bus mainloop integration.
+     - Add helpers for D-Bus signal watches.
+
+ -- Johan Hedberg <johan.hedberg@nokia.com>  Mon, 11 Jan 2010 13:09:50 +0200
+
 bluez (4.59-0maemo2) unstable; urgency=low
 
   * Remove upstart-dev dependency 
