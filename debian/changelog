@@ -1,3 +1,19 @@
+bluez (4.61-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.60:
+     - Fix issues with Read Inquiry Response Transmit Power Level.
+     - Fix possible invalid read when removing a temporary device.
+     - Fix mode restoration when remember_powered is false.
+     - Fix conference call releasing in telephony-maemo.
+     - Fix segmentation fault with authorization during headset disconnects.
+     - Add support for handling unanswered AVDTP request on disconnect.
+     - Add support for handling Inquiry Response Transmit Power Level.
+     - Add support for caching of remote host features.
+     - Add preliminary voice dialing support for HSP.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@gmail.com>  Mon, 15 Feb 2010 11:32:13 +0200
+
 bluez (4.60-0maemo2) unstable; urgency=low
 
   * maemo2 instead of maemo1 in order not to conflict with fremantle
