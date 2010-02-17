@@ -1,3 +1,13 @@
+bluez (4.61-0maemo2) unstable; urgency=low
+
+  * Add patch to fix accidental hci_read_inquiry_transmit_power_level symbol
+    breakage
+  * Add patch to prevent segfault while reading avdtp protocol version
+  * Fixes: NB#157086 - Incoming AVDTP request crash bluetoothd (Codenomicon
+    test suite)
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 16 Feb 2010 14:15:29 +0200
+
 bluez (4.61-0maemo1) unstable; urgency=low
 
   * New upstream release
@@ -12,7 +22,7 @@ bluez (4.61-0maemo1) unstable; urgency=low
      - Add support for caching of remote host features.
      - Add preliminary voice dialing support for HSP.
 
- -- Luiz Augusto von Dentz <luiz.dentz-von@gmail.com>  Mon, 15 Feb 2010 11:32:13 +0200
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 15 Feb 2010 11:32:13 +0200
 
 bluez (4.60-0maemo2) unstable; urgency=low
 
