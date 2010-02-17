@@ -1,0 +1,34 @@
+commit 372a952dab684933d2c946b5207b77bd6a7e2314
+Author: Marcel Holtmann <marcel@holtmann.org>
+Date:   Sat Feb 13 14:16:51 2010 -0800
+
+    Fix accidental hci_read_inquiry_transmit_power_level symbol breakage
+
+diff --git a/lib/hci.c b/lib/hci.c
+index 014b99b..858b9f1 100644
+--- a/lib/hci.c
++++ b/lib/hci.c
+@@ -2286,6 +2286,11 @@ int hci_read_inq_response_tx_power_level(int dd, int8_t *level, int to)
+ 	return 0;
+ }
+ 
++int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to)
++{
++	return hci_read_inq_response_tx_power_level(dd, level, to);
++}
++
+ int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to)
+ {
+ 	write_inquiry_transmit_power_level_cp cp;
+diff --git a/lib/hci_lib.h b/lib/hci_lib.h
+index 448162e..a465e32 100644
+--- a/lib/hci_lib.h
++++ b/lib/hci_lib.h
+@@ -102,6 +102,7 @@ int hci_read_simple_pairing_mode(int dd, uint8_t *mode, int to);
+ int hci_write_simple_pairing_mode(int dd, uint8_t mode, int to);
+ int hci_read_local_oob_data(int dd, uint8_t *hash, uint8_t *randomizer, int to);
+ int hci_read_inq_response_tx_power_level(int dd, int8_t *level, int to);
++int hci_read_inquiry_transmit_power_level(int dd, int8_t *level, int to);
+ int hci_write_inquiry_transmit_power_level(int dd, int8_t level, int to);
+ int hci_read_transmit_power_level(int dd, uint16_t handle, uint8_t type, int8_t *level, int to);
+ int hci_read_link_policy(int dd, uint16_t handle, uint16_t *policy, int to);
