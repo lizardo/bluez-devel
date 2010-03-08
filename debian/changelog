@@ -1,3 +1,16 @@
+bluez (4.62-0maemo1) unstable; urgency=low
+
+  * New upstream release 
+  * Change from ChangeLog since 4.61:
+     - Fix accidental symbol breakage with inquiry transmit power.
+     - Fix using invalid data from previous headset connection.
+     - Fix double free on AVDTP Abort response.
+     - Fix possible crash while verifying AVDTP version.
+     - Fix missing inuse flag when AVDTP stream is configured.
+     - Add support for Bluetooth controller types.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon,  8 Mar 2010 10:47:50 +0200
+
 bluez (4.61-0maemo2) unstable; urgency=low
 
   * Add patch to fix accidental hci_read_inquiry_transmit_power_level symbol
