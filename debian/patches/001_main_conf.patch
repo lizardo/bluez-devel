@@ -5,7 +5,7 @@
  
  # List of plugins that should not be loaded on bluetoothd startup
 -#DisablePlugins = network,input
-+DisablePlugins = network,input,hal
++DisablePlugins = network,hal
  
  # Default adaper name
  # %h - substituted for hostname

@@ -1,3 +1,9 @@
+bluez (4.62-0maemo2) unstable; urgency=low
+
+  * Enable input plugin to handle hid profile 
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 11 Mar 2010 16:12:16 +0200
+
 bluez (4.62-0maemo1) unstable; urgency=low
 
   * New upstream release 
