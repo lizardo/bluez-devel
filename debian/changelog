@@ -1,3 +1,12 @@
+bluez (4.63-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.62:
+     - Fix avdtp_abort not canceling pending requests.
+     - Fix stale connection when abort gets rejected.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Fri, 26 Mar 2010 13:28:07 +0200
+
 bluez (4.62-0maemo3) unstable; urgency=low
 
   * Fixes: NB#159431 - org.bluez.Adapter and org.bluez.Manager have no D-Bus
