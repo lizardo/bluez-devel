@@ -21,6 +21,9 @@ DEB_CONFIGURE_EXTRA_FLAGS := --enable-test --enable-bccmd --enable-configfiles \
 install/bluez::
 	install -D -m 0644 audio/audio.conf $(DEB_DESTDIR)/etc/bluetooth/audio.conf
 
+binary/bluez::
+	aegis-deb-add -control debian/bluez/DEBIAN/control .. debian/bluez.aegis=_aegis
+
 install/bluez-test::
 	install -D -m 0755 test/simple-agent $(DEB_DESTDIR)/usr/bin/bluez-simple-agent
 	install -D -m 0755 test/test-adapter $(DEB_DESTDIR)/usr/bin/bluez-test-adapter
@@ -33,3 +36,6 @@ install/bluez-test::
 	install -D -m 0755 test/list-devices $(DEB_DESTDIR)/usr/bin/bluez-list-devices
 	install -D -m 0755 test/test-telephony $(DEB_DESTDIR)/usr/bin/bluez-test-telephony
 	install -D -m 0755 test/gaptest $(DEB_DESTDIR)/usr/bin/gaptest
+
+binary/bluez-test::
+	aegis-deb-add -control debian/bluez-test/DEBIAN/control .. debian/bluez-test.aegis=_aegis

@@ -1,0 +1,16 @@
+<aegis>
+   <request>
+      <credential name="CAP::net_bind_service" />
+      <credential name="CAP::net_admin" />
+      <credential name="CAP::net_raw" />
+      <for path="/usr/sbin/bccmd" />
+      <for path="/usr/bin/l2ping" />
+      <for path="/usr/bin/l2test" />
+      <for path="/usr/bin/rctest" />
+      <for path="/usr/sbin/ciptool" />
+      <for path="/usr/bin/dund" />
+      <for path="/usr/bin/hidd" />
+      <for path="/usr/bin/pand" />
+      <for path="/usr/sbin/hciattach" />
+   </request>
+</aegis>
