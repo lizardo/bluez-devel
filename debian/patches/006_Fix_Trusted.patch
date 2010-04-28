@@ -1,0 +1,128 @@
+From 6da6e4e3de7f1800e5b736add0b944d33d3acf37 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto Von Dentz <luiz.dentz-von@nokia.com>
+Date: Thu, 22 Apr 2010 11:35:45 +0300
+Subject: [PATCH 1/2] Fix Device.SetProperty("Trusted",... always emit PropertyChanged
+
+Currently any change done to Trusted property generates a PropertyChanged
+since no verification is done prior to apply the new value which may
+generate an unnecessary write to the storage and extra D-Bus traffic.
+
+To fix this trusted is now loaded from storage and cached in memory when
+the device is created, which latter is used to make sure the value has
+really changed avoiding storage reads to check current value.
+---
+ src/adapter.c |    5 +----
+ src/device.c  |   23 ++++++++++++++++++++---
+ src/device.h  |    1 +
+ 3 files changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index c174793..b87f7d7 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -2980,7 +2980,6 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
+ 	struct btd_device *device;
+ 	struct agent *agent;
+ 	char address[18];
+-	gboolean trusted;
+ 	const gchar *dev_path;
+ 	int err;
+ 
+@@ -3005,9 +3004,7 @@ static int btd_adapter_authorize(struct btd_adapter *adapter,
+ 	auth->device = device;
+ 	auth->adapter = adapter;
+ 
+-	trusted = read_trust(&adapter->bdaddr, address, GLOBAL_TRUST);
+-
+-	if (trusted) {
++	if (device_is_trusted(device) == TRUE) {
+ 		adapter->auth_idle_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+ 							auth_idle_cb, auth,
+ 							g_free);
+diff --git a/src/device.c b/src/device.c
+index db54b09..9379ac4 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -134,6 +134,7 @@ struct btd_device {
+ 
+ 	sdp_list_t	*tmp_records;
+ 
++	gboolean	trusted;
+ 	gboolean	paired;
+ 	gboolean	renewed_key;
+ 
+@@ -256,6 +257,11 @@ gboolean device_is_paired(struct btd_device *device)
+ 	return device->paired;
+ }
+ 
++gboolean device_is_trusted(struct btd_device *device)
++{
++	return device->trusted;
++}
++
+ static DBusMessage *get_properties(DBusConnection *conn,
+ 				DBusMessage *msg, void *user_data)
+ {
+@@ -326,7 +332,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
+ 	dict_append_entry(&dict, "Paired", DBUS_TYPE_BOOLEAN, &boolean);
+ 
+ 	/* Trusted */
+-	boolean = read_trust(&src, dstaddr, GLOBAL_TRUST);
++	boolean = device_is_trusted(device);
+ 	dict_append_entry(&dict, "Trusted", DBUS_TYPE_BOOLEAN, &boolean);
+ 
+ 	/* Connected */
+@@ -379,18 +385,28 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
+ }
+ 
+ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
+-					dbus_bool_t value, void *data)
++					gboolean value, void *data)
+ {
+ 	struct btd_device *device = data;
+ 	struct btd_adapter *adapter = device->adapter;
+ 	char srcaddr[18], dstaddr[18];
+ 	bdaddr_t src;
++	int err;
++
++	if (device->trusted == value)
++		return dbus_message_new_method_return(msg);
+ 
+ 	adapter_get_address(adapter, &src);
+ 	ba2str(&src, srcaddr);
+ 	ba2str(&device->bdaddr, dstaddr);
+ 
+-	write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
++	err = write_trust(srcaddr, dstaddr, GLOBAL_TRUST, value);
++	if (err < 0)
++		return g_dbus_create_error(msg,
++				ERROR_INTERFACE ".Failed",
++				strerror(-err));
++
++	device->trusted = value;
+ 
+ 	emit_property_changed(conn, dbus_message_get_path(msg),
+ 				DEVICE_INTERFACE, "Trusted",
+@@ -869,6 +885,7 @@ struct btd_device *device_create(DBusConnection *conn,
+ 	adapter_get_address(adapter, &src);
+ 	ba2str(&src, srcaddr);
+ 	read_device_name(srcaddr, address, device->name);
++	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
+ 
+ 	device->auth = 0xff;
+ 
+diff --git a/src/device.h b/src/device.h
+index 07f5f44..0896951 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -54,6 +54,7 @@ void device_set_agent(struct btd_device *device, struct agent *agent);
+ gboolean device_is_busy(struct btd_device *device);
+ gboolean device_is_temporary(struct btd_device *device);
+ gboolean device_is_paired(struct btd_device *device);
++gboolean device_is_trusted(struct btd_device *device);
+ void device_set_paired(struct btd_device *device, gboolean paired);
+ void device_set_temporary(struct btd_device *device, gboolean temporary);
+ void device_set_cap(struct btd_device *device, uint8_t cap);
+-- 
+1.7.0.4
+
