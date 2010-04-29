@@ -16,7 +16,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --enable-test --enable-bccmd --enable-configfiles \
 				--enable-pand --enable-network --enable-serial \
 				--disable-manpages --disable-pcmcia-rules \
 				--disable-usb --disable-hid2hci --disable-cups \
-				--disable-pie --with-telephony=maemo5
+				--disable-pie --with-telephony=maemo6
 
 install/bluez::
 	install -D -m 0644 audio/audio.conf $(DEB_DESTDIR)/etc/bluetooth/audio.conf
