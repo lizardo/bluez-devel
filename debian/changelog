@@ -1,3 +1,20 @@
+bluez (4.64-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.63:
+     - Fix invalid memory access in headset_get_nrec function.
+     - Fix issue with disconnect event on higher protocol layers.
+     - Fix issue with list parsing in sdp_set_supp_features function.
+     - Fix device object reference counting for SDP browse requests.
+     - Add missing memory checks whenever memory is allocated for SDP.
+     - Add support for exporting local services via D-Bus.
+     - Add more L2CAP Enhanced Retransmission test options.
+  * Fixes: NB#164957 - DBus.Error.NoReply exception after timeout when
+  calling CreateDevice()
+  * Fixes: NB#156233 - Bluetooth HFP indicators do not work on Harmattan
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 29 Apr 2010 13:32:26 +0300
+
 bluez (4.63-0maemo3) unstable; urgency=low
 
   * Fixes: NB#165733 - Unable to set device trusted using bluez-test-device
