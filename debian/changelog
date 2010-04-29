@@ -1,7 +1,7 @@
 bluez (4.63-0maemo3) unstable; urgency=low
 
-  * Fixes NB#165733 - Unable to set device trusted using bluez-test-device
-  * Fixes NB#164967 - Signal PropertyChanged Trusted emitted when property
+  * Fixes: NB#165733 - Unable to set device trusted using bluez-test-device
+  * Fixes: NB#164967 - Signal PropertyChanged Trusted emitted when property
   value is not changed
 
  -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 27 Apr 2010 11:17:17 +0300
