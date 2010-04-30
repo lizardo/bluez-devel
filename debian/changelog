@@ -1,3 +1,9 @@
+bluez (4.64-0maemo2) unstable; urgency=low
+
+  * Enable pnap plugin
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Fri, 30 Apr 2010 12:10:02 +0300
+
 bluez (4.64-0maemo1) unstable; urgency=low
 
   * New upstream release
