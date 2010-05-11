@@ -1,3 +1,9 @@
+bluez (4.64-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#168169 - Carkit shows full signal strength when in offline mode
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 11 May 2010 11:16:45 +0300
+
 bluez (4.64-0maemo2) unstable; urgency=low
 
   * Enable pnat plugin
