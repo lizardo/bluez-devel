@@ -1,3 +1,18 @@
+bluez (4.65-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.64:
+     - Fix issues with general bonding being default setting now.
+     - Fix driver removal upon device removal.
+     - Add new "Blocked" property to device objects.
+     - Add hciconfig support for blacklisting.
+     - Add support for dynamic debug feature.
+  * Fixes: NB#169510 - Dun connection fails, bluetoothd is spawning phone-at
+  from incorrect location
+  * Fixes: NB#169879 - "service" indicator not sent when going to offline mode
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 24 May 2010 10:23:54 +0300
+
 bluez (4.64-0maemo3) unstable; urgency=low
 
   * Fixes: NB#168169 - Carkit shows full signal strength when in offline mode
