@@ -9,3 +9,5 @@ debian/tmp/usr/bin/dund
 debian/tmp/usr/bin/hidd
 debian/tmp/usr/bin/pand
 debian/tmp/usr/sbin/hciattach
+debian/tmp/usr/bin/rfcomm
+debian/tmp/etc/bluetooth/rfcomm.conf

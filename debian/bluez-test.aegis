@@ -12,5 +12,6 @@
       <for path="/usr/bin/hidd" />
       <for path="/usr/bin/pand" />
       <for path="/usr/sbin/hciattach" />
+      <for path="/usr/bin/rfcomm" />
    </request>
 </aegis>

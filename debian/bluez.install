@@ -6,6 +6,4 @@ debian/tmp/usr/lib/alsa-lib/*.so
 debian/tmp/usr/lib/gstreamer-0.10/*.so
 debian/tmp/usr/bin/hcitool
 debian/tmp/usr/bin/sdptool
-debian/tmp/usr/bin/rfcomm
 debian/tmp/usr/sbin/hciconfig
-debian/tmp/etc/bluetooth/rfcomm.conf
