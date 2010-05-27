@@ -1,3 +1,12 @@
+bluez (4.65-0maemo2) unstable; urgency=low
+
+  * Move rfcomm to bluez-tests
+  * Request cellular token for bluetoothd
+  * Fixes: NB#170125 - Several +VGS messages sent in a row with same value
+  * Fixes: NB#170987 - (GPLv3) Two GPLv3 files included in BlueZ
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 26 May 2010 11:09:15 +0300
+
 bluez (4.65-0maemo1) unstable; urgency=low
 
   * New upstream release
