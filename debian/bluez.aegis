@@ -14,6 +14,7 @@
       <credential name="CAP::net_raw" />
       <credential name="CAP::ipc_lock" />
       <credential name="Cellular" />
+      <credential name="GRP::phonet" />
       <for path="/usr/sbin/bluetoothd" />
    </request>
 </aegis>
