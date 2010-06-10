@@ -1,3 +1,9 @@
+bluez (4.65-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#173186 - Add API file to bluez
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 10 Jun 2010 15:17:49 +0300
+
 bluez (4.65-0maemo3) unstable; urgency=low
 
   * Fixes: NB#171160 - Dun connection fails, phonet-at cannot create ISI AT
