@@ -1,0 +1,6 @@
+interface: libopenobex
+type: library
+scope: Internal
+state: unstable
+libs-pkg: libopenobex1
+dev-pkg: libopenobex1-dev
