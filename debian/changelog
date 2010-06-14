@@ -1,3 +1,20 @@
+bluez (4.66-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.65:
+     - Fix regression with full debug enabling via SIGUSR2.
+     - Fix redundant speaker/microphone gains being sent.
+     - Fix not emitting PropertyChanged for SpeakerGain/MicrophoneGain.
+     - Fix issue with storage usage when a record is not found in memory.
+     - Fix issue with DiscoverServices not retrieving any records.
+     - Fix audio profile disconnection order to match whitepaper.
+     - Fix auto-accept confirmation when local agent has NoInputNoOutput.
+     - Fix remote just-works SSP when MITM protection is required.
+     - Fix performing dedicated bonding without MITM requirement.
+     - Add support for storing debug link keys in runtime memory.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 14 Jun 2010 10:52:54 +0300
+
 bluez (4.65-0maemo4) unstable; urgency=low
 
   * Fixes: NB#173186 - Add API file to bluez
