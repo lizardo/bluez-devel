@@ -1,6 +1,6 @@
-interface: libopenobex
+interface: libbluetooth
 type: library
-scope: Internal
+scope: Platform
 state: unstable
-libs-pkg: libopenobex1
-dev-pkg: libopenobex1-dev
+libs-pkg: libbluetooth3
+dev-pkg: libbluetooth3-dev
