@@ -1,3 +1,10 @@
+bluez (4.66-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#169140 - Wrong error note when bluetooth pairing fails to
+  authentication time-out
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 29 Jun 2010 12:23:15 +0300
+
 bluez (4.66-0maemo3) unstable; urgency=low
 
   * Fixes: NB#166721 - Device name empty after creating device using BlueZ dbus
