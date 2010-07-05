@@ -1,3 +1,19 @@
+bluez (4.67-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.66:
+     - Fix issue with authentication reply when bonding already completed.
+     - Fix issue with not canceling authentication when bonding fails.
+     - Fix issue with changed combination keys and temporary storage.
+     - Fix issue with sdp_get_supp_feat library function.
+     - Fix issue with missing unblock on device removal.
+     - Fix issue with not waiting for mode change completion.
+     - Add ARMv6 optimized version of analysis filter for SBC encoder.
+  * Fixes: NB#166750 - Signals not emitted when setting discoverability twice
+  fast with adapter.SetProperty()
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 05 Jul 2010 11:29:55 +0300
+
 bluez (4.66-0maemo4) unstable; urgency=low
 
   * Fixes: NB#169140 - Wrong error note when bluetooth pairing fails to
