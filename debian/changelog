@@ -11,8 +11,9 @@ bluez (4.67-0maemo1) unstable; urgency=low
      - Add ARMv6 optimized version of analysis filter for SBC encoder.
   * Fixes: NB#166750 - Signals not emitted when setting discoverability twice
   fast with adapter.SetProperty()
+  * Fixes: NB#176611 - Unable to block device using BlueZ dbus API
 
- -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 05 Jul 2010 11:29:55 +0300
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 05 Jul 2010 15:39:06 +0300
 
 bluez (4.66-0maemo4) unstable; urgency=low
 
