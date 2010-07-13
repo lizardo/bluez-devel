@@ -1,0 +1,19 @@
+commit 86b16d8a63d8d6191533418dd1c38ce35c3fbf0a
+Author: Marcel Holtmann <marcel@holtmann.org>
+Date:   Mon Jul 12 23:59:34 2010 -0300
+
+    Remove double g_option_context_free() call
+
+diff --git a/src/main.c b/src/main.c
+index 94a6f0e..6113217 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -410,8 +410,6 @@ int main(int argc, char *argv[])
+ 		}
+ 	}
+ 
+-	g_option_context_free(context);
+-
+ 	if (option_detach == TRUE && option_udev == FALSE) {
+ 		if (daemon(0, 0)) {
+ 			perror("Can't start daemon");
