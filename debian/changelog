@@ -1,3 +1,17 @@
+bluez (4.68-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.67:
+     - Fix initialization of adapters in RAW mode.
+     - Fix signal strength for HFP in Maemo's telephony support.
+     - Add support for following the radio state via Maemo's MCE.
+     - Add initial set of LE commands and events definitions.
+     - Add mode option for L2CAP sockets to the BtIO API.
+  * Fixes: NB#177832 - bluetooth hfp signal strength seems to be always 1/5
+  (or 5/100)
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 13 Jul 2010 10:58:34 +0300
+
 bluez (4.67-0maemo1) unstable; urgency=low
 
   * New upstream release
