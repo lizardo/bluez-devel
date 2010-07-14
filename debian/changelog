@@ -1,3 +1,14 @@
+bluez (4.69-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from Changelog since 4.68:
+     - Fix issue with calling g_option_context_free() twice.
+     - Fix inconsistencies with initial LE commands and events.
+     - Add support for telephony ClearLastNumber method.
+     - Add support for network server interface.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 14 Jul 2010 10:19:34 +0300
+
 bluez (4.68-0maemo1) unstable; urgency=low
 
   * New upstream release
