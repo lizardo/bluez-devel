@@ -1,5 +1,7 @@
---- src/main.conf	2008-12-24 21:41:48.000000000 +0200
-+++ src/main.conf	2008-12-29 00:21:04.000000000 +0200
+diff --git a/src/main.conf b/src/main.conf
+index 59026df..525c8e0 100644
+--- a/src/main.conf
++++ b/src/main.conf
 @@ -1,7 +1,7 @@
  [General]
  
@@ -9,7 +11,7 @@
  
  # Default adaper name
  # %h - substituted for hostname
-@@ -10,7 +10,7 @@
+@@ -10,7 +10,7 @@ Name = %h-%d
  
  # Default device class. Only the major and minor device class bits are
  # considered.
@@ -18,7 +20,7 @@
  
  # How long to stay in discoverable mode before going back to non-discoverable
  # The value is in seconds. Default is 180, i.e. 3 minutes.
-@@ -32,7 +32,7 @@
+@@ -32,10 +32,10 @@ DiscoverSchedulerInterval = 0
  
  # What value should be assumed for the adapter Powered property when
  # SetProperty(Powered, ...) hasn't been called yet. Defaults to true
@@ -26,4 +28,8 @@
 +InitiallyPowered = false
  
  # Remember the previously stored Powered state when initializing adapters
- RememberPowered = true
+-RememberPowered = true
++RememberPowered = false
+ 
+ # Use vendor, product and version information for DID profile support.
+ # The values are separated by ":" and VID, PID and version.
