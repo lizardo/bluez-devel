@@ -1,3 +1,9 @@
+bluez (4.69-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#181827 - Bluetooth status is not kept after reboot
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Tue, 10 Aug 2010 11:59:55 +0300
+
 bluez (4.69-0maemo3) unstable; urgency=low
 
   * Fixes: NB#178405 - Name PropertyChanged signal is emitted two times when
