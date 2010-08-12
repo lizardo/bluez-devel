@@ -1,3 +1,10 @@
+bluez (4.69-0maemo5) unstable; urgency=low
+
+  * Fixes: NB#177064 - Connection fails to pairable BT 2.1 headset if the link
+  key has been removed on the headset
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 11 Aug 2010 12:52:49 +0300
+
 bluez (4.69-0maemo4) unstable; urgency=low
 
   * Fixes: NB#181827 - Bluetooth status is not kept after reboot
