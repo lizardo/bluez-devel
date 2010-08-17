@@ -1,3 +1,10 @@
+bluez (4.69-0maemo6) unstable; urgency=low
+
+  * Fixes: NB#185712 - Bluetooth DUN disconnect leaves phonet-at zombie process
+  in memory
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 17 Aug 2010 10:49:40 +0300
+
 bluez (4.69-0maemo5) unstable; urgency=low
 
   * Fixes: NB#177064 - Connection fails to pairable BT 2.1 headset if the link
