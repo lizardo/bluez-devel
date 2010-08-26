@@ -1,5 +1,4 @@
 debian/tmp/etc/bluetooth/audio.conf
-debian/tmp/etc/bluetooth/main.conf
 debian/tmp/etc/dbus-1/system.d/*
 debian/tmp/usr/sbin/bluetoothd
 debian/tmp/usr/lib/alsa-lib/*.so
