@@ -1,3 +1,25 @@
+bluez (4.70-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.69:
+     - Fix incoming call indication handling when in WAITING state.
+     - Fix various SDP related qualification test case issues.
+     - Fix logic to write EIR when SDP records are changed.
+     - Fix UTF-8 validity check for remote names in EIR.
+     - Add support for UUID-128 extended inquiry response.
+     - Add service UUIDs from EIR to the DeviceFound signal.
+     - Add fast connectable feature for Handsfree profile.
+     - Add HCI command and event definitions for AMP support.
+     - Add firmware download support for Qualcommh devices.
+     - Add host level support for Atheros AR300x device.
+     - Add initial support of ATT and GATT for basic rate.
+  * Fixes: NB#186676 - main.conf in bluez package overrides customized settings 
+  * Modification to bluez.install in the debian directory so that bluez no longer
+    installs main.conf. This is to avoid overriding the main.conf which is provided
+    by maemo-bluetooth-settings-template.
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Thu, 26 Aug 2010 12:16:31 +0300
+
 bluez (4.69-0maemo6) unstable; urgency=low
 
   * Fixes: NB#185712 - Bluetooth DUN disconnect leaves phonet-at zombie process
