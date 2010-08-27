@@ -1,3 +1,11 @@
+bluez (4.70-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#186084 - Bluetoothd crash when running Codenomicon A2DP tests
+  * The patch above was in the previous release but not mentioned on the 
+    changelog
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Fri, 27 Aug 2010 13:29:32 +0300
+
 bluez (4.70-0maemo1) unstable; urgency=low
 
   * New upstream release
