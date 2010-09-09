@@ -1,3 +1,22 @@
+bluez (4.71-0maemo1) lucid; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.70:
+     - Fix compilation when SBC support in not enabled.
+     - Fix crash with RequestSession and application disconnects.
+     - Fix memory leak and possible crash when removing audio device.
+     - Fix issue with closing stream of locked sep when reconfiguring.
+     - Fix issue where discovery could interfere with bonding.
+     - Fix issue with Connected status when PS3 BD remote connects.
+     - Fix issue with lifetime of fake input devices.
+     - Add support for compile time option of oui.txt path.
+     - Add support for printing IEEE1284 device ID for CUPS.
+     - Add plugin for setting adapter class via DMI.
+     - Add more features for attribute protocol and profile.
+     - Add initial support for MCAP.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 09 Sep 2010 13:06:13 +0300
+
 bluez (4.70-0maemo3) unstable; urgency=low
 
   * Fixes: NB#189631 - Bluetoothd crash when pairing with Codenomicon A2DP
