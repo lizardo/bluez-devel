@@ -1,5 +1,7 @@
---- audio/audio.conf	2009-05-03 23:38:47.000000000 +0300
-+++ audio/audio.conf	2009-05-04 09:23:25.000000000 +0300
+diff --git a/audio/audio.conf b/audio/audio.conf
+index 302e046..6ea0439 100644
+--- a/audio/audio.conf
++++ b/audio/audio.conf
 @@ -5,7 +5,7 @@
  [General]
  
@@ -18,3 +20,12 @@
  
  # Automatically connect both A2DP and HFP/HSP profiles for incoming
  # connections. Some headsets that support both profiles will only connect the
+@@ -37,7 +37,7 @@ MaxConnected=1
+ # call is answered or rejected. Page scan interval is much shorter and page
+ # scan type changed to interlaced. Such allows faster connection initiated
+ # by a headset.
+-FastConnectable=false
++FastConnectable=true
+ 
+ # Just an example of potential config options for the other interfaces
+ #[A2DP]
