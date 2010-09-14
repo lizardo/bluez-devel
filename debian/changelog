@@ -1,4 +1,10 @@
-bluez (4.71-0maemo1) lucid; urgency=low
+bluez (4.71-0maemo2) unstable; urgency=low
+
+  * New enable fast connectable
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Tue, 14 Sep 2010 12:27:23 +0300
+
+bluez (4.71-0maemo1) unstable; urgency=low
 
   * New upstream release
   * Change from ChangeLog since 4.70:
