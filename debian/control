@@ -41,6 +41,14 @@ Conflicts: bluez-utils-dbg
 Description: Debug symbols for bluez
  This package contains debug symbols for the bluez package.
 
+Package: bluez-doc
+Section: doc
+Architecture: any
+Priority: extra
+Depends: bluez (= ${binary:Version})
+Description: Documentation for BlueZ
+ This package contains the API documentation that comes with BlueZ.
+
 Package: libbluetooth3-dev
 Section: libdevel
 Provides: libbluetooth-dev
