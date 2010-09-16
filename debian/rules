@@ -42,5 +42,4 @@ binary/bluez-test::
 	aegis-deb-add -control debian/bluez-test/DEBIAN/control .. debian/bluez-test.aegis=_aegis
 
 binary-install/bluez::
-	        dh_installdocs --package=bluez-doc
-			
+        dh_installdocs --package=bluez-doc
