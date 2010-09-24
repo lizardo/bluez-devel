@@ -15,6 +15,7 @@
       <credential name="CAP::ipc_lock" />
       <credential name="Cellular" />
       <credential name="GRP::phonet" />
+      <credential name="DeviceModeControl">
       <for path="/usr/sbin/bluetoothd" />
    </request>
 </aegis>
