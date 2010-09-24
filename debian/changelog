@@ -1,3 +1,24 @@
+bluez (4.72-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * change from ChangeLog since 4.71:
+     - Fix memory leak while connecting BTIO channels.
+     - Fix crash with GStreamer plugin if SBC is not supported.
+     - Fix issue with GATT server stop sending notifications.
+     - Fix issue with GATT and dealing with the minimum MTU size.
+     - Fix issue with file descriptor leak in GATT client.
+     - Add support for UUID 128-bit handling in attribute client.
+     - Add support for encoders/decoders for MTU Exchange.
+     - Add support for the MTU Exchange procedure to the server.
+     - Add support for a per channel MTU to the ATT server.
+     - Add support for Characteristic interface.
+     - Add support for new Media API and framework.
+     - Add initial support for HDP plugin.
+  * Fixes: NB#194229 - MCE BT power state is wrong after switching BT off from
+  BlueZ D-Bus API when security enabled
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Fri, 24 Sep 2010 12:30:23 +0300
+
 bluez (4.71-0maemo4) unstable; urgency=low
 
   * Fixes: NB#192783 - bluetoothd crashes when BT is set to visible
