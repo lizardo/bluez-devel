@@ -1,0 +1,27 @@
+From 1998ef247ee558882f12378d7ff9b58a4fe97813 Mon Sep 17 00:00:00 2001
+From: Lukasz Pawlik <lucas.pawlik@gmail.com>
+Date: Thu, 23 Sep 2010 16:27:39 +0200
+Subject: [PATCH 2/3] Fix problem with EIR data when setting the name
+
+Previously changed BT fiendly name was not reflected until BT adapter reboot.
+This patch fix this problem. Now changed name is reflected without need of
+rebooting adapter.
+---
+ src/adapter.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index 9b638cf..0e9be5f 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -1031,6 +1031,7 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
+ 			return failed_strerror(msg, err);
+ 
+ 		adapter->name_stored = TRUE;
++		update_ext_inquiry_response(adapter);
+ 	}
+ 
+ done:
+-- 
+1.7.0.4
+
