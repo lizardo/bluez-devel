@@ -1,3 +1,16 @@
+bluez (4.73-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Chaneg from ChangeLog since 4.72:
+     - Fix problem with EIR data when setting the name.
+     - Fix reading local name from command complete event.
+     - Fix registering local endpoints with disabled socket interface.
+     - Add support for more HCI operations using ops infrastructure.
+     - Add support for GATT characteristic hierarchy.
+     - Add support for GATT indications.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 04 Oct 2010 10:21:24 +0300
+
 bluez (4.72-0maemo2) unstable; urgency=low
 
   * Fixes: NB#193600 - To reflect the new local BT name device needs to
