@@ -1,0 +1,78 @@
+commit 4a3c238d694d91a3eb2c2140c0998a7051d38d49
+Author: Vinicius Costa Gomes <vinicius.gomes@openbossa.org>
+Date:   Mon Oct 4 20:57:51 2010 -0300
+
+    Fix regression for Legacy Pairing
+    
+    When a pincode was entered and no DBus error ocurred, bluetoothd
+    still responded with Pin Code Request Negative Reply.
+    
+    The regression was introduced by commit
+    e7daece858070d71cecf6ade4f0e3c93272c53ac
+
+diff --git a/src/dbus-hci.c b/src/dbus-hci.c
+index bf11ad2..b93dbcd 100644
+--- a/src/dbus-hci.c
++++ b/src/dbus-hci.c
+@@ -169,7 +169,7 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
+ 
+ 	device_get_address(device, &dba);
+ 
+-	err = btd_adapter_pincode_reply(adapter, &dba, derr ? pincode : NULL);
++	err = btd_adapter_pincode_reply(adapter, &dba, derr ? NULL : pincode);
+ 	if (err < 0) {
+ 		error("pincode_reply: %s (%d)", strerror(-err), -err);
+ 		return;
+From 89ec962d5b47760d64c0a45305da013e3e9aa1fb Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date: Tue, 5 Oct 2010 10:35:45 +0300
+Subject: [PATCH] Fix use of uninitialised variable on legacy pairing
+
+Regression caused by e7daece858070d71cecf6ade4f0e3c93272c53ac:
+
+==23899== Use of uninitialised value of size 4
+==23899==    at 0x49CD888: _itoa_word (_itoa.c:196)
+==23899==    by 0x49D1109: vfprintf (vfprintf.c:1613)
+==23899==    by 0x4A7506C: __vsprintf_chk (vsprintf_chk.c:86)
+==23899==    by 0x4A74FAC: __sprintf_chk (sprintf_chk.c:33)
+==23899==    by 0x4830E08: ba2str (stdio2.h:34)
+==23899==    by 0x1496B3: set_pin_length (security.c:514)
+==23899==    by 0x168399: pincode_cb (dbus-hci.c:179)
+==23899==    by 0x162E0D: pincode_cb (device.c:2135)
+==23899==    by 0x15AD55: pincode_reply (agent.c:416)
+==23899==    by 0x49467E0: ??? (in /lib/libdbus-1.so.3.5.2)
+==23899==    by 0x4934975: ??? (in /lib/libdbus-1.so.3.5.2)
+==23899==    by 0x4937B81: dbus_connection_dispatch (in /lib/libdbus-1.so.3.5.2)
+==23899==
+==23899== Conditional jump or move depends on uninitialised value(s)
+==23899==    at 0x49CD893: _itoa_word (_itoa.c:196)
+==23899==    by 0x49D1109: vfprintf (vfprintf.c:1613)
+==23899==    by 0x4A7506C: __vsprintf_chk (vsprintf_chk.c:86)
+==23899==    by 0x4A74FAC: __sprintf_chk (sprintf_chk.c:33)
+==23899==    by 0x4830E08: ba2str (stdio2.h:34)
+==23899==    by 0x1496B3: set_pin_length (security.c:514)
+==23899==    by 0x168399: pincode_cb (dbus-hci.c:179)
+==23899==    by 0x162E0D: pincode_cb (device.c:2135)
+==23899==    by 0x15AD55: pincode_reply (agent.c:416)
+==23899==    by 0x49467E0: ??? (in /lib/libdbus-1.so.3.5.2)
+==23899==    by 0x4934975: ??? (in /lib/libdbus-1.so.3.5.2)
+==23899==    by 0x4937B81: dbus_connection_dispatch (in /lib/libdbus-1.so.3.5.2)
+---
+ src/dbus-hci.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/src/dbus-hci.c b/src/dbus-hci.c
+index b93dbcd..7309883 100644
+--- a/src/dbus-hci.c
++++ b/src/dbus-hci.c
+@@ -167,6 +167,7 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
+ 	bdaddr_t sba, dba;
+ 	int err;
+ 
++	adapter_get_address(adapter, &sba);
+ 	device_get_address(device, &dba);
+ 
+ 	err = btd_adapter_pincode_reply(adapter, &dba, derr ? NULL : pincode);
+-- 
+1.7.1
+
