@@ -1,3 +1,30 @@
+bluez (4.76-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.75:
+    - Fix issue in telephony driver with hanging up held call.
+    - Fix issue in telephony driver with notifications when on hold.
+    - Fix issue with blocking on setconf confirmation callback.
+    - Fix issue with not always signaling new streams as sinks.
+    - Fix issue with errors in case of endpoint request timeout.
+    - Fix issue with HFP/HSP microphone and speaker gain values.
+    - Add source if the device attempt to configure local sink stream.
+    - Add PSM option for GATT/ATT over BR/EDR on gatttool.
+    - Add support for GATT/ATT Attribute Write Request.
+    - Update MCAP and HDP support.
+  * Fixes: NB#194877 - Bluetoothd valgrind Invalid read of size 1 by
+  sdp_record_alloc
+  * Fixes: NB#196700 - microphone gain set to 0 when mono audio channel
+  is opened in call with bluetooth headset
+  * Fixes: NB#197064 - AT+COPS is not filtering operator name length
+  correctly
+  * Fixes: NB#197065 - BT HFP: with one held call and outgoing alerting
+  call AT+CHUP from HF hangs up held call
+  * Fixes: NB#196525 - BT HFP: RING and CLIP sent for waiting call when
+  shouldn't
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Fri, 15 Oct 2010 15:38:29 +0300
+
 bluez (4.75-0maemo1) unstable; urgency=low
 
   * New upstream release
