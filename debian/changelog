@@ -1,3 +1,10 @@
+bluez (4.76-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#198214 - Both calls get terminated when rejecting waiting call
+  while another call on hold
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Wed, 20 Oct 2010 10:39:32 +0300
+
 bluez (4.76-0maemo1) unstable; urgency=low
 
   * New upstream release
