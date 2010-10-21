@@ -1,3 +1,9 @@
+bluez (4.76-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#199164 - Sometimes only HSP profile is shown for BH-900
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Thu, 21 Oct 2010 13:35:33 +0300
+
 bluez (4.76-0maemo2) unstable; urgency=low
 
   * Fixes: NB#198214 - Both calls get terminated when rejecting waiting call
