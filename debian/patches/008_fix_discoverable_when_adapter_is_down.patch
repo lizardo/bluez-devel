@@ -1,0 +1,77 @@
+From 20b56c1f6911f72e44a6d831e6a7a5b12169496a Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date: Tue, 26 Oct 2010 15:30:24 +0300
+Subject: [PATCH 3/4] Fix setting Discoverable when adapter is down
+
+This cause an error because adapter_up will load the mode from storage
+ignoring pending mode which cause modes to mismatch.
+
+To fix this behavior now when attempting to change mode we first store
+the new mode and wait DEVUP to complete set the mode stored.
+---
+ src/adapter.c |   19 +++++++++++--------
+ 1 files changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index 3db17a8..2b0c404 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -475,6 +475,7 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
+ 			DBusMessage *msg)
+ {
+ 	int err;
++	const char *modestr;
+ 
+ 	if (adapter->pending_mode != NULL)
+ 		return -EALREADY;
+@@ -483,6 +484,8 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
+ 		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
+ 		if (err < 0)
+ 			return err;
++
++		goto done;
+ 	}
+ 
+ 	if (adapter->up && new_mode == MODE_OFF) {
+@@ -518,18 +521,18 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
+ 	}
+ 
+ done:
+-	DBG("%s", mode2str(new_mode));
++	modestr = mode2str(new_mode);
++	write_device_mode(&adapter->bdaddr, modestr);
++
++	DBG("%s", modestr);
+ 
+ 	if (msg != NULL)
+ 		/* Wait for mode change to reply */
+ 		adapter->pending_mode = create_session(adapter, connection,
+ 							msg, new_mode, NULL);
+-	else {
++	else
+ 		/* Nothing to reply just write the new mode */
+-		const char *modestr = mode2str(new_mode);
+ 		adapter->mode = new_mode;
+-		write_device_mode(&adapter->bdaddr, modestr);
+-	}
+ 
+ 	return 0;
+ }
+@@ -2534,11 +2537,11 @@ static void set_mode_complete(struct btd_adapter *adapter)
+ 
+ 	DBG("%s", modestr);
+ 
+-	/* Only store if the mode matches the pending */
+-	if (err == 0)
++	/* restore if the mode doesn't matches the pending */
++	if (err != 0) {
+ 		write_device_mode(&adapter->bdaddr, modestr);
+-	else
+ 		error("unable to set mode: %s", mode2str(pending->mode));
++	}
+ 
+ 	session_unref(pending);
+ }
+-- 
+1.7.1
+

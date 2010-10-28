@@ -1,0 +1,32 @@
+From d87790337675900a0c0ea968c828755daf3bdd55 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date: Tue, 26 Oct 2010 11:19:34 +0300
+Subject: [PATCH 1/2] Fix issue when setting limited discoverable mode
+
+When setting limited discoverable mode it will always switch to
+discoverable on adapter_mode_changed which doesn't match the pending mode
+requested.
+---
+ src/adapter.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index fe1f2d9..9b88cca 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -3159,9 +3159,10 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
+ 					DBUS_TYPE_BOOLEAN, &pairable);
+ 
+ 	if (discoverable && adapter->pairable && adapter->discov_timeout > 0 &&
+-						adapter->discov_timeout <= 60)
++						adapter->discov_timeout <= 60) {
++		adapter->mode = MODE_LIMITED;
+ 		adapter_set_limited_discoverable(adapter, TRUE);
+-	else if (!discoverable)
++	} else if (!discoverable)
+ 		adapter_set_limited_discoverable(adapter, FALSE);
+ 
+ 	emit_property_changed(connection, path,
+-- 
+1.7.1
+
