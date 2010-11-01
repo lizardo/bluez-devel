@@ -1,0 +1,75 @@
+commit c72ce0f12a8387a70a6f0109f13bd6f414f32be8
+Author: Johan Hedberg <johan.hedberg@nokia.com>
+Date:   Fri Oct 29 11:04:29 2010 -0400
+
+    Don't use AVDTP timer when the device is being disconnected
+    
+    When the user has requested a disconnection it doesn't make sense to
+    have the AVDTP state machine waiting before closing the signalling
+    channel. This is particularly important for Device.Disconnect since only
+    two seconds are available for a clean disconnect before a forced
+    HCI_Disconnect command is sent.
+
+diff --git a/audio/avdtp.c b/audio/avdtp.c
+index 3509e12..5e84a45 100644
+--- a/audio/avdtp.c
++++ b/audio/avdtp.c
+@@ -394,6 +394,9 @@ struct avdtp {
+ 	/* True if the session should be automatically disconnected */
+ 	gboolean auto_dc;
+ 
++	/* True if the entire device is being disconnected */
++	gboolean device_disconnect;
++
+ 	GIOChannel *io;
+ 	guint io_id;
+ 
+@@ -685,6 +688,11 @@ static void set_disconnect_timer(struct avdtp *session)
+ 	if (session->dc_timer)
+ 		remove_disconnect_timer(session);
+ 
++	if (session->device_disconnect) {
++		g_idle_add(disconnect_timeout, session);
++		return;
++	}
++
+ 	session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
+ 						disconnect_timeout,
+ 						session);
+@@ -3809,6 +3817,11 @@ gboolean avdtp_stream_setup_active(struct avdtp *session)
+ 	return session->stream_setup;
+ }
+ 
++void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc)
++{
++	session->device_disconnect = dev_dc;
++}
++
+ unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data)
+ {
+ 	struct avdtp_state_callback *state_cb;
+diff --git a/audio/avdtp.h b/audio/avdtp.h
+index 93b2ede..9406fa7 100644
+--- a/audio/avdtp.h
++++ b/audio/avdtp.h
+@@ -308,6 +308,7 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
+ 
+ void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc);
+ gboolean avdtp_stream_setup_active(struct avdtp *session);
++void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc);
+ 
+ int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version);
+ void avdtp_exit(const bdaddr_t *src);
+diff --git a/audio/sink.c b/audio/sink.c
+index 730faf1..a9f6307 100644
+--- a/audio/sink.c
++++ b/audio/sink.c
+@@ -672,6 +672,8 @@ gboolean sink_shutdown(struct sink *sink)
+ 	if (!sink->stream)
+ 		return FALSE;
+ 
++	avdtp_set_device_disconnect(sink->session, TRUE);
++
+ 	if (avdtp_close(sink->session, sink->stream, FALSE) < 0)
+ 		return FALSE;
+ 

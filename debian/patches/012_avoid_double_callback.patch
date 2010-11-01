@@ -1,0 +1,35 @@
+commit 88ee4ce65f27185b256e8c1354bdfe7cb3f16cf0
+Author: Daniel Orstadius <daniel.orstadius@nokia.com>
+Date:   Mon Nov 1 12:44:25 2010 +0200
+
+    Fix avoid starting AVDTP disconnect timer twice
+    
+    Remove starting the timer when setting the AVDTP state to idle. If
+    needed, the timer should probably already have been started in
+    avdtp_unref when the reference count goes to one.
+    
+    Since reference counting is handled in avdtp_ref and avdtp_unref, it
+    seems reasonable that not to inspect the count outside of those
+    functions.
+    
+    The issue was found when using Device.Disconnect to disconnect a
+    headset. It was revealed by commit
+    c72ce0f12a8387a70a6f0109f13bd6f414f32be8.
+    
+    Before the commit, the timer was removed and then started again.
+    After applying it, the idle callback (disconnect_timeout) is called
+    twice, causing a crash.
+
+diff --git a/audio/avdtp.c b/audio/avdtp.c
+index 5e84a45..611fd7b 100644
+--- a/audio/avdtp.c
++++ b/audio/avdtp.c
+@@ -1034,8 +1034,6 @@ static void avdtp_sep_set_state(struct avdtp *session,
+ 		/* Remove pending commands for this stream from the queue */
+ 		cleanup_queue(session, stream);
+ 		stream_free(stream);
+-		if (session->ref == 1 && !session->streams)
+-			set_disconnect_timer(session);
+ 		break;
+ 	default:
+ 		break;
