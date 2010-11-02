@@ -1,6 +1,15 @@
+# subsystem: Bluetooth
+# src-pkg: bluez
 interface: libbluetooth
 type: library
-scope: Platform
+scope: internal
 state: unstable
 libs-pkg: libbluetooth3
 dev-pkg: libbluetooth3-dev
+
+# subsystem: Bluetooth
+# src-pkg: bluez
+interface: BlueZ D-Bus interface
+type: dbus
+state: stable
+scope: Platform
