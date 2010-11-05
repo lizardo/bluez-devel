@@ -1,0 +1,28 @@
+From 8c8ce257af78448ff1d53c057d96b7e62a8de994 Mon Sep 17 00:00:00 2001
+From: Daniel Orstadius <daniel.orstadius@nokia.com>
+Date: Fri, 5 Nov 2010 10:49:41 +0200
+Subject: [PATCH 8/8] Fix audio disconnect watch in connecting state
+
+If disconnect_cb is not added until the connected state, the
+callback will not be triggered if Device.Disconnected is called
+while the audio profiles are still connecting.
+---
+ audio/device.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/audio/device.c b/audio/device.c
+index 9554c7b..eff8231 100644
+--- a/audio/device.c
++++ b/audio/device.c
+@@ -231,7 +231,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
+ 							priv->dc_id);
+ 			priv->dc_id = 0;
+ 		}
+-	} else if (new_state == AUDIO_STATE_CONNECTED)
++	} else if (new_state == AUDIO_STATE_CONNECTING)
+ 		priv->dc_id = device_add_disconnect_watch(dev->btd_dev,
+ 						disconnect_cb, dev, NULL);
+ 
+-- 
+1.7.0.4
+
