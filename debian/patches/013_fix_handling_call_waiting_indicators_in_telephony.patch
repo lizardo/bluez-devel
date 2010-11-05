@@ -1,0 +1,41 @@
+From 1d356e8b59588f8134d0663fa081a99f497f6669 Mon Sep 17 00:00:00 2001
+From: Lukasz Pawlik <lucas.pawlik@gmail.com>
+Date: Thu, 4 Nov 2010 16:00:37 +0100
+Subject: [PATCH 4/8] Fix handling call waiting indicators in telephony
+
+Previously +CIEV: "callsetup" was sent before +CCWA: (call waiting)
+notification. According to the HFP specification AG reports new
+call waiting by sending +CCWA before +CIEV indicator. Some HF did
+not handle properly ending active call after rejecting 2nd incoming call
+if "callsetup" indicator was sent before call waiting.
+---
+ audio/telephony-maemo6.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index 33fd13f..72c8e36 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -914,9 +914,6 @@ static void handle_incoming_call(DBusMessage *msg)
+ 	g_free(call->number);
+ 	call->number = g_strdup(number);
+ 
+-	telephony_update_indicator(maemo_indicators, "callsetup",
+-					EV_CALLSETUP_INCOMING);
+-
+ 	if (find_call_with_status(CSD_CALL_STATUS_ACTIVE) ||
+ 			find_call_with_status(CSD_CALL_STATUS_HOLD))
+ 		telephony_call_waiting_ind(call->number,
+@@ -924,6 +921,9 @@ static void handle_incoming_call(DBusMessage *msg)
+ 	else
+ 		telephony_incoming_call_ind(call->number,
+ 						number_type(call->number));
++
++	telephony_update_indicator(maemo_indicators, "callsetup",
++					EV_CALLSETUP_INCOMING);
+ }
+ 
+ static void handle_outgoing_call(DBusMessage *msg)
+-- 
+1.7.0.4
+
