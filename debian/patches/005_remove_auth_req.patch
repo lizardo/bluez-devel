@@ -1,0 +1,18 @@
+diff --git a/src/device.c b/src/device.c
+index 7c421e3..6dafcc9 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -1899,9 +1899,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+ 		goto failed;
+ 	}
+ 
+-	status = device_authentication_requested(device, handle);
+-	if (status != 0)
+-		goto failed;
++	/* Removing the authentication request from userspace since it
++	   should be made by the kernel. The modification can't be
++	   pushed upstream (yet?) since without the corresponding
++	   changes in the kernel, legacy pairing won't work */
+ 
+ 	return;
+ 
