@@ -1,3 +1,10 @@
+bluez (4.79-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#192051 - Supported Profiles not found sometimes when pairing phone
+    to Moto HK202 BT headset
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Thu, 11 Nov 2010 13:59:28 +0200
+
 bluez (4.79-0maemo1) unstable; urgency=low
 
   * New upstream release
