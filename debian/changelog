@@ -1,3 +1,11 @@
+bluez (4.79-0maemo3) unstable; urgency=low
+
+  * Add --enable-attrib
+  * Add gatttool to bluez-test
+  * Fix adapter initialization
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Fri, 12 Nov 2010 18:23:54 +0200
+
 bluez (4.79-0maemo2) unstable; urgency=low
 
   * Fixes: NB#192051 - Supported Profiles not found sometimes when pairing phone
