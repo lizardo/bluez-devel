@@ -11,3 +11,4 @@ debian/tmp/usr/bin/pand
 debian/tmp/usr/sbin/hciattach
 debian/tmp/usr/bin/rfcomm
 debian/tmp/etc/bluetooth/rfcomm.conf
+debian/tmp/usr/bin/gatttool

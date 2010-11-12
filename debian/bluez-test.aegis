@@ -13,5 +13,6 @@
       <for path="/usr/bin/pand" />
       <for path="/usr/sbin/hciattach" />
       <for path="/usr/bin/rfcomm" />
+      <for path="/usr/bin/gatttool" />
    </request>
 </aegis>
