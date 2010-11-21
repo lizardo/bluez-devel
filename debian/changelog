@@ -1,3 +1,26 @@
+bluez (4.80-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.79:
+    - Fix legacy link key storing for some buggy adapters.
+    - Fix invalid memory access when EIR field length is zero.
+    - Fix adapter initialization to wait for kernel HCI commands.
+    - Fix initialization of adapters which are already up.
+    - Fix possible race condition when initializing adapters.
+    - Fix possible crashes when attempting to connect AVDTP.
+    - Fix not aborting sink stream configuration on disconnect.
+    - Fix not indicating disconnected state when connecting to AVDTP.
+    - Fix not dropping AVDTP session when canceling stream setup.
+    - Fix AVDTP abort not being send when the state is idle.
+    - Fix regression with Low Energy and interleave discovery.
+    - Add a new configuration option to disable Low Energy support.
+    - Add iwmmxt optimization for SBC for ARM PXA series CPUs.
+    - Update support for GATT Primary Service Discovery.
+    - Update MCAP and HDP support.
+  * Fixes: NB#200502 - Disconnection of BT headset fails
+
+ -- Luiz Augusto von Dentz <dentz@dentz-laptop>  Sun, 21 Nov 2010 22:23:19 +0200
+
 bluez (4.79-0maemo3) unstable; urgency=low
 
   * Add --enable-attrib
