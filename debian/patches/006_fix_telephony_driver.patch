@@ -1,0 +1,389 @@
+From 2d9b4fcf9f60e262da8afee7511b47bc121b567b Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date: Tue, 23 Nov 2010 11:50:10 +0200
+Subject: [PATCH 1/3] Fix not deinitializing telephony driver when there is no adapter powered
+
+This changes hook telephony driver de/initialization to powered state so
+telephony drivers can now free their resources when there is no adapter
+active in the system.
+---
+ audio/manager.c |   59 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 files changed, 54 insertions(+), 5 deletions(-)
+
+diff --git a/audio/manager.c b/audio/manager.c
+index 816c807..8a5616d 100644
+--- a/audio/manager.c
++++ b/audio/manager.c
+@@ -96,6 +96,7 @@ typedef enum {
+ 
+ struct audio_adapter {
+ 	struct btd_adapter *btd_adapter;
++	gboolean powered;
+ 	uint32_t hsp_ag_record_id;
+ 	uint32_t hfp_ag_record_id;
+ 	uint32_t hfp_hs_record_id;
+@@ -858,6 +859,49 @@ static struct audio_adapter *audio_adapter_get(struct btd_adapter *adapter)
+ 	return adp;
+ }
+ 
++static void state_changed(struct btd_adapter *adapter, gboolean powered)
++{
++	struct audio_adapter *adp;
++	static gboolean telephony = FALSE;
++	GSList *l;
++
++	DBG("%s powered %s", adapter_get_path(adapter),
++						powered ? "on" : "off");
++
++	/* ignore powered change, adapter is powering down */
++	if (powered && adapter_powering_down(adapter))
++		return;
++
++	adp = find_adapter(adapters, adapter);
++	if (!adp)
++		return;
++
++	adp->powered = powered;
++
++	if (powered) {
++		/* telephony driver already initialized*/
++		if (telephony == TRUE)
++			return;
++		telephony_init();
++		telephony = TRUE;
++		return;
++	}
++
++	/* telephony not initialized just ignore power down */
++	if (telephony == FALSE)
++		return;
++
++	for (l = adapters; l; l = l->next) {
++		adp = l->data;
++
++		if (adp->powered == TRUE)
++			return;
++	}
++
++	telephony_exit();
++	telephony = FALSE;
++}
++
+ static int headset_server_probe(struct btd_adapter *adapter)
+ {
+ 	struct audio_adapter *adp;
+@@ -871,10 +915,15 @@ static int headset_server_probe(struct btd_adapter *adapter)
+ 		return -EINVAL;
+ 
+ 	err = headset_server_init(adp);
+-	if (err < 0)
++	if (err < 0) {
+ 		audio_adapter_unref(adp);
++		return err;
++	}
+ 
+-	return err;
++	btd_adapter_register_powered_callback(adapter, state_changed);
++	state_changed(adapter, TRUE);
++
++	return 0;
+ }
+ 
+ static void headset_server_remove(struct btd_adapter *adapter)
+@@ -910,6 +959,8 @@ static void headset_server_remove(struct btd_adapter *adapter)
+ 		adp->hfp_ag_server = NULL;
+ 	}
+ 
++	btd_adapter_unregister_powered_callback(adapter, state_changed);
++
+ 	audio_adapter_unref(adp);
+ }
+ 
+@@ -1177,10 +1228,8 @@ proceed:
+ 	if (enabled.media)
+ 		btd_register_adapter_driver(&media_server_driver);
+ 
+-	if (enabled.headset) {
+-		telephony_init();
++	if (enabled.headset)
+ 		btd_register_adapter_driver(&headset_server_driver);
+-	}
+ 
+ 	if (enabled.gateway)
+ 		btd_register_adapter_driver(&gateway_server_driver);
+-- 
+1.7.1
+
+From 32c8b2ef5dd478ffbfd67b0af661fb131dea2968 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date: Thu, 25 Nov 2010 10:58:19 +0200
+Subject: [PATCH 3/3] Fix telephony maemo6 driver deinitialization
+
+Remove all match rules and unregister its interface when telephony_exit
+is called.
+---
+ audio/telephony-maemo6.c |  198 +++++++++++++++++++++++++++-------------------
+ 1 files changed, 116 insertions(+), 82 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index 72c8e36..542fab9 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -149,6 +149,7 @@ static int get_property(const char *iface, const char *prop);
+ static DBusConnection *connection = NULL;
+ 
+ static GSList *calls = NULL;
++static GSList *watches = NULL;
+ 
+ /* Reference count for determining the call indicator status */
+ static GSList *active_calls = NULL;
+@@ -1616,59 +1617,6 @@ done:
+ 	dbus_message_unref(reply);
+ }
+ 
+-static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
+-{
+-	DBusError err;
+-	DBusMessage *reply;
+-	DBusMessageIter iter, sub;
+-	const char *path;
+-	char match_string[256];
+-	int type;
+-
+-	reply = dbus_pending_call_steal_reply(call);
+-
+-	dbus_error_init(&err);
+-	if (dbus_set_error_from_message(&err, reply)) {
+-		error("hald replied with an error: %s, %s",
+-				err.name, err.message);
+-		dbus_error_free(&err);
+-		goto done;
+-	}
+-
+-	dbus_message_iter_init(reply, &iter);
+-
+-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+-		error("Unexpected signature in FindDeviceByCapability return");
+-		goto done;
+-	}
+-
+-	dbus_message_iter_recurse(&iter, &sub);
+-
+-	type = dbus_message_iter_get_arg_type(&sub);
+-
+-	if (type != DBUS_TYPE_OBJECT_PATH && type != DBUS_TYPE_STRING) {
+-		error("No hal device with battery capability found");
+-		goto done;
+-	}
+-
+-	dbus_message_iter_get_basic(&sub, &path);
+-
+-	DBG("telephony-maemo6: found battery device at %s", path);
+-
+-	snprintf(match_string, sizeof(match_string),
+-			"type='signal',"
+-			"path='%s',"
+-			"interface='org.freedesktop.Hal.Device',"
+-			"member='PropertyModified'", path);
+-	dbus_bus_add_match(connection, match_string, NULL);
+-
+-	hal_get_integer(path, "battery.charge_level.last_full", &battchg_last);
+-	hal_get_integer(path, "battery.charge_level.current", &battchg_cur);
+-	hal_get_integer(path, "battery.charge_level.design", &battchg_design);
+-
+-done:
+-	dbus_message_unref(reply);
+-}
+ 
+ static void phonebook_read_reply(DBusPendingCall *call, void *user_data)
+ {
+@@ -1897,14 +1845,11 @@ static void modem_state_reply(DBusPendingCall *call, void *user_data)
+ 	dbus_message_unref(reply);
+ }
+ 
+-static DBusHandlerResult signal_filter(DBusConnection *conn,
+-						DBusMessage *msg, void *data)
++static gboolean signal_filter(DBusConnection *conn, DBusMessage *msg,
++								void *data)
+ {
+ 	const char *path = dbus_message_get_path(msg);
+ 
+-	if (dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_SIGNAL)
+-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+-
+ 	if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Coming"))
+ 		handle_incoming_call(msg);
+ 	else if (dbus_message_is_signal(msg, CSD_CALL_INTERFACE, "Created"))
+@@ -1934,7 +1879,61 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
+ 						"modem_state_changed_ind"))
+ 		handle_modem_state(msg);
+ 
+-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
++	return TRUE;
++}
++
++static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
++{
++	DBusError err;
++	DBusMessage *reply;
++	DBusMessageIter iter, sub;
++	const char *path;
++	int type;
++	guint watch;
++
++	reply = dbus_pending_call_steal_reply(call);
++
++	dbus_error_init(&err);
++	if (dbus_set_error_from_message(&err, reply)) {
++		error("hald replied with an error: %s, %s",
++				err.name, err.message);
++		dbus_error_free(&err);
++		goto done;
++	}
++
++	dbus_message_iter_init(reply, &iter);
++
++	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
++		error("Unexpected signature in FindDeviceByCapability return");
++		goto done;
++	}
++
++	dbus_message_iter_recurse(&iter, &sub);
++
++	type = dbus_message_iter_get_arg_type(&sub);
++
++	if (type != DBUS_TYPE_OBJECT_PATH && type != DBUS_TYPE_STRING) {
++		error("No hal device with battery capability found");
++		goto done;
++	}
++
++	dbus_message_iter_get_basic(&sub, &path);
++
++	DBG("telephony-maemo6: found battery device at %s", path);
++
++	watch = g_dbus_add_signal_watch(connection, NULL, path,
++					"org.freedesktop.Hal.Device",
++					"PropertyModified", signal_filter,
++					NULL, NULL);
++
++	watches = g_slist_prepend(watches, GINT_TO_POINTER(watch));
++
++	hal_get_integer(path, "battery.charge_level.last_full", &battchg_last);
++	hal_get_integer(path, "battery.charge_level.current", &battchg_cur);
++	hal_get_integer(path, "battery.charge_level.design", &battchg_design);
++
++done:
++	dbus_message_unref(reply);
+ }
+ 
+ int telephony_init(void)
+@@ -1947,31 +1946,54 @@ int telephony_init(void)
+ 				AG_FEATURE_ENHANCED_CALL_CONTROL |
+ 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
+ 				AG_FEATURE_THREE_WAY_CALLING;
++	guint watch;
++
++	DBG("");
+ 
+ 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+ 
+-	if (!dbus_connection_add_filter(connection, signal_filter,
+-						NULL, NULL))
+-		error("Can't add signal filter");
+-
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CALL_INTERFACE, NULL);
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CALL_INSTANCE, NULL);
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CALL_CONFERENCE, NULL);
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CSNET_REGISTRATION,
+-			NULL);
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CSNET_OPERATOR,
+-			NULL);
+-	dbus_bus_add_match(connection,
+-			"type=signal,interface=" CSD_CSNET_SIGNAL,
+-			NULL);
+-	dbus_bus_add_match(connection,
+-				"type=signal,interface=" SSC_DBUS_IFACE
+-				",member=modem_state_changed_ind", NULL);
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CALL_INTERFACE, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CALL_INSTANCE, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CALL_CONFERENCE, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CSNET_REGISTRATION, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CSNET_OPERATOR, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					CSD_CSNET_SIGNAL, NULL,
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
++
++	watch = g_dbus_add_signal_watch(connection, NULL, NULL,
++					SSC_DBUS_IFACE,
++					"modem_state_changed_ind",
++					signal_filter, NULL, NULL);
++
++	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
+ 
+ 	if (send_method_call(SSC_DBUS_NAME, SSC_DBUS_PATH, SSC_DBUS_IFACE,
+ 					"get_modem_state", modem_state_reply,
+@@ -2005,8 +2027,15 @@ int telephony_init(void)
+ 	return 0;
+ }
+ 
++static void remove_watch(gpointer data)
++{
++	g_dbus_remove_watch(connection, GPOINTER_TO_UINT(data));
++}
++
+ void telephony_exit(void)
+ {
++	DBG("");
++
+ 	g_free(net.operator_name);
+ 	net.operator_name = NULL;
+ 
+@@ -2017,7 +2046,12 @@ void telephony_exit(void)
+ 	g_slist_free(calls);
+ 	calls = NULL;
+ 
+-	dbus_connection_remove_filter(connection, signal_filter, NULL);
++	g_slist_foreach(watches, (GFunc) remove_watch, NULL);
++	g_slist_free(watches);
++	watches = NULL;
++
++	g_dbus_unregister_interface(connection, TELEPHONY_MAEMO_PATH,
++						TELEPHONY_MAEMO_INTERFACE);
+ 
+ 	dbus_connection_unref(connection);
+ 	connection = NULL;
+-- 
+1.7.1
+
