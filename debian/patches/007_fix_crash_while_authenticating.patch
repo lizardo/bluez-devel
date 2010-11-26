@@ -1,0 +1,31 @@
+From 508fdc901e7e1721eef19de5d8ab6e2f1f313dd7 Mon Sep 17 00:00:00 2001
+From: Rafal Michalski <michalski.raf@gmail.com>
+Date: Thu, 25 Nov 2010 11:06:55 +0100
+Subject: [PATCH] Fix crash after simultaneous authentication requests
+
+Previously simultaneous authentication requests to the same device caused
+bluetoothd crash. Now if ongoing authentication occurs error is returned,
+preventing from simultaneous requests to the same device.
+---
+ src/device.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/src/device.c b/src/device.c
+index 7c421e3..4427cd4 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -2178,6 +2178,11 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
+ 	struct agent *agent;
+ 	int err;
+ 
++	if (device->authr) {
++		error("%s: authentication already requested", device->path);
++		return -EALREADY;
++	}
++
+ 	DBG("%s: requesting agent authentication", device->path);
+ 
+ 	agent = device_get_agent(device);
+-- 
+1.7.1
+
