@@ -1,3 +1,13 @@
+bluez (4.80-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#205032 - COREWEB: /usr/sbin/bluetoothd 'pincode_cb
+  pincode_reply _dbus_pending_call_complete
+  complete_pending_call_and_unlock dbus_connection_dispatch
+  * Fixes: NB#203829 - Bluetoothd is active in idle device even when configured
+  off
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Fri, 26 Nov 2010 10:52:01 +0200
+
 bluez (4.80-0maemo2) unstable; urgency=low
 
   * Fixes: NB#206880 - For all non ssp devices (S60 and S40) BT pairing code is
