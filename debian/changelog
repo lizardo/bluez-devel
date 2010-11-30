@@ -1,3 +1,12 @@
+bluez (4.80-0maemo5) unstable; urgency=low
+
+  * Add bluez-test-attrib to bluez-test
+  * Fixes: NB#207970 - Bluetoothd is listening to HandsFree Profile related
+  DBus signals when HFP is not enabled
+  * Fixes: NB#208331 - bluetoothd prints several dbus errors on startup
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 30 Nov 2010 16:17:21 +0200
+
 bluez (4.80-0maemo4) unstable; urgency=low
 
   * Fixes: NB#206809 - The secondary DUT is not displayed in the select device list
