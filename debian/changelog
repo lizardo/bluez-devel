@@ -1,3 +1,14 @@
+bluez (4.81-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.80:
+    - Fix issue with telephony driver initialization.
+    - Fix issue with adapter services list initialization.
+    - Fix crash after simultaneous authentication requests.
+    - Add support for primary service search on device creation.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 01 Dec 2010 10:25:22 +0200
+
 bluez (4.80-0maemo5) unstable; urgency=low
 
   * Add bluez-test-attrib to bluez-test
