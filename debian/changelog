@@ -1,3 +1,9 @@
+bluez (4.81-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#209006 - bluetoothd prints several dbus errors on stoping
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 02 Dec 2010 10:59:56 +0200
+
 bluez (4.81-0maemo1) unstable; urgency=low
 
   * New upstream release
