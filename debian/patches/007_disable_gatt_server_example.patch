@@ -1,0 +1,57 @@
+diff --git a/attrib/manager.c b/attrib/manager.c
+index f991f8e..4718310 100644
+--- a/attrib/manager.c
++++ b/attrib/manager.c
+@@ -35,7 +35,6 @@
+ 
+ #include "manager.h"
+ #include "client.h"
+-#include "example.h"
+ 
+ #define GATT_UUID	"00001801-0000-1000-8000-00805f9b34fb"
+ 
+@@ -82,21 +81,13 @@ int attrib_manager_init(DBusConnection *conn)
+ 
+ 	attrib_client_init(connection);
+ 
+-	btd_register_device_driver(&client_driver);
+-
+-	/*
+-	 * FIXME: Add config file option to allow
+-	 * enable/disable the GATT server and client.
+-	 */
+-
+-	return server_example_init();
++	return btd_register_device_driver(&client_driver);
+ }
+ 
+ void attrib_manager_exit(void)
+ {
+ 	btd_unregister_device_driver(&client_driver);
+ 
+-	server_example_exit();
+ 	attrib_client_exit();
+ 
+ 	dbus_connection_unref(connection);
+diff --git a/src/attrib-server.c b/src/attrib-server.c
+index 41c0ffc..0b847aa 100644
+--- a/src/attrib-server.c
++++ b/src/attrib-server.c
+@@ -45,6 +45,7 @@
+ #include "gattrib.h"
+ 
+ #include "attrib-server.h"
++#include "example.h"
+ 
+ #define GATT_PSM 0x1f
+ #define GATT_CID 4
+@@ -721,6 +722,9 @@ int attrib_server_init(void)
+ 		/* Doesn't have LE support, continue */
+ 	}
+ 
++	if (server_example_init() < 0)
++		goto failed;
++
+ 	return 0;
+ 
+ failed:
