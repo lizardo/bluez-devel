@@ -1,3 +1,21 @@
+bluez (4.82-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Change from ChangeLog since 4.81:
+    - Fix crash with mmap of files with multiples of page size.
+    - Fix HFP response and hold (AT+BTRH) command response.
+    - Fix device creation error response when powered off.
+    - Fix device removal when connecting/browsing fails.
+    - Add initial attribute permission implementation.
+    - Add AVDTP SRC stream send buffer size verification.
+    - Add support for setting link policy based on features.
+  * Fixes: NB#212909 - BT HFP: volume level sent from HF device is sent back to
+  it twice uselessly
+  * Fixes: NB#209516 - COREWEB: /usr/sbin/bluetoothd 'strchr textfile_foreach
+  read_records btd_device_get_record device_match_pattern'
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 20 Dec 2010 10:22:03 +0200
+
 bluez (4.81-0maemo4) unstable; urgency=low
 
   * Fixes: NB#191202 - SEV-2: 10776 GSM-BTR_1-7170 Call origination from a
