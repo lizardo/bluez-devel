@@ -1,3 +1,18 @@
+bluez (4.83-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.82:
+    - Fix issue with already connected HFP/HSP endpoints.
+    - Fix missing reply when create device is canceled.
+    - Fix memory leak within the attribute server.
+    - Fix memory leak with unused extended inquiry name.
+    - Fix setting paired state when device->authr is false.
+    - Fix clearing authentication request for renewed keys.
+    - Add support for storing link keys in runtime memory.
+    - Update support for primary service discovery.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Mon, 27 Dec 2010 10:32:48 +0200
+
 bluez (4.82-0maemo1) unstable; urgency=low
 
   * New upstream release
