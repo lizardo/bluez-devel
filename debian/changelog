@@ -1,3 +1,14 @@
+bluez (4.84-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.83:
+    - Fix issue with wrong parameters and device found signals.
+    - Fix issue with leaking EIR data if RSSI does not change.
+    - Fix issue with adapter initialization state.
+    - Fix issue with closing of SDP server sockets.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 29 Dec 2010 10:43:39 +0200
+
 bluez (4.83-0maemo1) unstable; urgency=low
 
   * New upstream release
