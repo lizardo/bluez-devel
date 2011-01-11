@@ -1,3 +1,17 @@
+bluez (4.85-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.84:
+    - Fix issue with event mask setting for older adapters.
+    - Fix issue with device creation and pairing failures.
+    - Add support for telephony support via oFono.
+    - Add support for characteristic security level.
+    - Update support for service registration.
+  * Fixes: NB#217160 - Constant memory increase in bluetoothd heap on BT
+  headset connect/disconnect
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 12 Jan 2011 10:33:49 +0200
+
 bluez (4.84-0maemo2) unstable; urgency=low
 
   * Fixes: NB#211188 - Device still exists after BT is switched off during
