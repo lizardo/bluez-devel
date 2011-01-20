@@ -1,0 +1,26 @@
+commit 24dbc52388f1ef2e759d24d74cd32f93531c8857
+Author: Johan Hedberg <johan.hedberg@nokia.com>
+Date:   Mon Jan 17 09:01:04 2011 +0000
+
+    Revert "Send an Invalid PDU Size Error Response for Service Search Req"
+    
+    This reverts commit 3094ec7008735c80d35bd255ffc41e7bea2d3a3c.
+    
+    Commit 3094ec7008735c80d35bd255ffc41e7bea2d3a3c was supposed to fix
+    TP/SERVER/SS/BI-01-C but it turns out it doesn't even affect the outcome
+    of that test case (the code path is never traversed). Additionally the
+    commit breaks TP/SERVER/SS/BI-02-C so it should be reverted.
+
+diff --git a/src/sdpd-request.c b/src/sdpd-request.c
+index 9e4b6b8..668e190 100644
+--- a/src/sdpd-request.c
++++ b/src/sdpd-request.c
+@@ -377,7 +377,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
+ 	mlen = scanned + sizeof(uint16_t) + 1;
+ 	// ensure we don't read past buffer
+ 	if (plen < mlen || plen != mlen + *(uint8_t *)(pdata+sizeof(uint16_t))) {
+-		status = SDP_INVALID_PDU_SIZE;
++		status = SDP_INVALID_SYNTAX;
+ 		goto done;
+ 	}
+ 
