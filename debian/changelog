@@ -1,3 +1,13 @@
+bluez (4.87-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.86:
+    - Fix issue with initialization when adapter is already up.
+    - Fix issue with attribute server MTU and incoming connections.
+    - Fix issue with duplicate characteristics after discovery.
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 26 Jan 2011 11:43:33 +0200
+
 bluez (4.86-0maemo1) unstable; urgency=low
 
   * New usptream release
