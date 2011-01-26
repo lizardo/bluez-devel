@@ -1,12 +1,13 @@
 diff --git a/src/device.c b/src/device.c
-index 5326e3f..f4ac512 100644
+index bf42b4b..336ade7 100644
 --- a/src/device.c
 +++ b/src/device.c
-@@ -1952,8 +1952,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+@@ -2006,9 +2006,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
  		goto failed;
  	}
  
--	if (btd_adapter_request_authentication(device->adapter, handle) < 0)
+-	if (btd_adapter_request_authentication(device->adapter,
+-							&device->bdaddr) < 0)
 -		goto failed;
 +	/* Removing the authentication request from userspace since it
 +	   should be made by the kernel. The modification can't be
