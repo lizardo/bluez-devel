@@ -1,3 +1,10 @@
+bluez (4.87-0maemo2) unstable; urgency=low
+
+  * Enable Media API
+  * Fixes: NB#203167 - [HFP] DSP still enabled after OK response to AT+NREC
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 27 Jan 2011 17:17:09 +0200
+
 bluez (4.87-0maemo1) unstable; urgency=low
 
   * New upstream release
