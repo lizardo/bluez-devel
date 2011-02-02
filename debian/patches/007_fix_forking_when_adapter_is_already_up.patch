@@ -1,0 +1,127 @@
+diff --git a/plugins/hciops.c b/plugins/hciops.c
+index ecfcec3..e5160ea 100644
+--- a/plugins/hciops.c
++++ b/plugins/hciops.c
+@@ -455,6 +455,29 @@ static void start_adapter(int index)
+ 	memset(dev->eir, 0, sizeof(dev->eir));
+ }
+ 
++static int hciops_stop_inquiry(int index)
++{
++	struct dev_info *dev = &devs[index];
++	struct hci_dev_info di;
++	int err;
++
++	DBG("hci%d", index);
++
++	if (hci_devinfo(index, &di) < 0)
++		return -errno;
++
++	if (hci_test_bit(HCI_INQUIRY, &di.flags))
++		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
++						OCF_INQUIRY_CANCEL, 0, 0);
++	else
++		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
++					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
++	if (err < 0)
++		err = -errno;
++
++	return err;
++}
++
+ static gboolean init_adapter(int index)
+ {
+ 	struct dev_info *dev = &devs[index];
+@@ -494,6 +517,9 @@ static gboolean init_adapter(int index)
+ 	hciops_set_discoverable(index, discoverable);
+ 	hciops_set_pairable(index, pairable);
+ 
++	if (dev->already_up)
++		hciops_stop_inquiry(index);
++
+ done:
+ 	btd_adapter_unref(adapter);
+ 	return TRUE;
+@@ -2458,7 +2484,7 @@ static void init_pending(int index)
+ 	hci_set_bit(PENDING_NAME, &dev->pending);
+ }
+ 
+-static void init_device(int index)
++static void init_device(int index, gboolean already_up)
+ {
+ 	struct hci_dev_req dr;
+ 	int dd;
+@@ -2482,6 +2508,10 @@ static void init_device(int index)
+ 	init_pending(index);
+ 	start_hci_dev(index);
+ 
++	/* Avoid forking if nothing else has to be done */
++	if (already_up)
++		return;
++
+ 	/* Do initialization in the separate process */
+ 	pid = fork();
+ 	switch (pid) {
+@@ -2562,7 +2592,7 @@ static void device_event(int event, int index)
+ 	switch (event) {
+ 	case HCI_DEV_REG:
+ 		info("HCI dev %d registered", index);
+-		init_device(index);
++		init_device(index, FALSE);
+ 		break;
+ 
+ 	case HCI_DEV_UNREG:
+@@ -2596,29 +2626,6 @@ static void device_event(int event, int index)
+ 	}
+ }
+ 
+-static int hciops_stop_inquiry(int index)
+-{
+-	struct dev_info *dev = &devs[index];
+-	struct hci_dev_info di;
+-	int err;
+-
+-	DBG("hci%d", index);
+-
+-	if (hci_devinfo(index, &di) < 0)
+-		return -errno;
+-
+-	if (hci_test_bit(HCI_INQUIRY, &di.flags))
+-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+-						OCF_INQUIRY_CANCEL, 0, 0);
+-	else
+-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
+-					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
+-	if (err < 0)
+-		err = -errno;
+-
+-	return err;
+-}
+-
+ static gboolean init_known_adapters(gpointer user_data)
+ {
+ 	struct hci_dev_list_req *dl;
+@@ -2648,18 +2655,20 @@ static gboolean init_known_adapters(gpointer user_data)
+ 
+ 	for (i = 0; i < dl->dev_num; i++, dr++) {
+ 		struct dev_info *dev;
++		gboolean already_up;
++
++		already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
+ 
+-		device_event(HCI_DEV_REG, dr->dev_id);
++		init_device(dr->dev_id, already_up);
+ 
+ 		dev = &devs[dr->dev_id];
+ 
+-		dev->already_up = hci_test_bit(HCI_UP, &dr->dev_opt);
++		dev->already_up = already_up;
+ 
+ 		if (!dev->already_up)
+ 			continue;
+ 
+ 		init_conn_list(dr->dev_id);
+-		hciops_stop_inquiry(dr->dev_id);
+ 
+ 		dev->pending = 0;
+ 		hci_set_bit(PENDING_VERSION, &dev->pending);
