@@ -1,3 +1,10 @@
+bluez (4.87-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#223434 - Device still exists after BT is switched off during
+  pairing
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Wed, 02 Feb 2011 13:40:08 +0200
+
 bluez (4.87-0maemo2) unstable; urgency=low
 
   * Enable Media API
