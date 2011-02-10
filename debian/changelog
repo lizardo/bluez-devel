@@ -1,3 +1,9 @@
+bluez (4.87-0maemo5) unstable; urgency=low
+
+  * Fixes: NB#225180 - Bluetoothd exits during Codenomicon HFP DTMF tests
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Thu, 10 Feb 2011 13:09:00 +0200
+
 bluez (4.87-0maemo4) unstable; urgency=low
 
   * Fixes: NB#225322 - BT chip (unnecessarily?) power cycled at bluetoothd
