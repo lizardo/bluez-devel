@@ -1,13 +1,12 @@
-diff --git a/src/device.c b/src/device.c
-index bf42b4b..336ade7 100644
---- a/src/device.c
-+++ b/src/device.c
-@@ -2006,9 +2006,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
- 		goto failed;
- 	}
+diff --git a/plugins/hciops.c b/plugins/hciops.c
+index 9354bbe..596196e 100644
+--- a/plugins/hciops.c
++++ b/plugins/hciops.c
+@@ -3493,8 +3493,10 @@ static void bonding_connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+ 		/* Wait proper error to be propagated by bonding complete */
+ 		return;
  
--	if (btd_adapter_request_authentication(device->adapter,
--							&device->bdaddr) < 0)
+-	if (request_authentication(dev->id, &conn->bdaddr) < 0)
 -		goto failed;
 +	/* Removing the authentication request from userspace since it
 +	   should be made by the kernel. The modification can't be
