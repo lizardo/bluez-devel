@@ -157,3 +157,17 @@ index 86405fc..dfa06d9 100644
 -- 
 1.7.1
 
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index dfa06d9..bf1e0c4 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -2028,6 +2028,9 @@ void telephony_exit(void)
+ 	g_free(last_dialed_number);
+ 	last_dialed_number = NULL;
+ 
++	g_slist_free(active_calls);
++	active_calls = NULL;
++
+ 	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
+ 	g_slist_free(calls);
+ 	calls = NULL;
