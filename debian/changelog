@@ -1,3 +1,9 @@
+bluez (4.88-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#227665 - Bluetoothd crashes while pairing two devices
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Fri, 18 Feb 2011 09:43:54 +0200
+
 bluez (4.88-0maemo1) unstable; urgency=low
 
   * New upstream release
