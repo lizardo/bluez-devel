@@ -1,3 +1,9 @@
+bluez (4.89-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#212656 - [NFC] BT Headset does not stay connected after first tap
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Tue, 22 Feb 2011 11:07:16 +0200
+
 bluez (4.89-0maemo1) unstable; urgency=low
 
   * New upstream release
