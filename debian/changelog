@@ -1,3 +1,9 @@
+bluez (4.89-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#228762 - [NFC] Easy-connect fails if BT is switched off
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Sun, 06 Mar 2011 14:58:42 +0200
+
 bluez (4.89-0maemo3) unstable; urgency=low
 
   * Fixes: NB#225322 - BT chip unnecessarily power cycled at bluetoothd startup
