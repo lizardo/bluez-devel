@@ -1,3 +1,22 @@
+bluez (4.90-0maemo1) unstable; urgency=low
+
+  * New upstream release
+  * Changes from ChangeLog since 4.89:
+    - Fix issue with setting of global mode property.
+    - Fix issue with handling of RequestSession responses.
+    - Fix issue with TP_BNEP_CTRL_BV_01_C qualification test.
+    - Fix issue with too short AVDTP request timeout.
+    - Add support for SIM Access Profile manager.
+    - Add support for new UUID utility functions.
+    - Add support for attribute server notifications.
+    - Add support for client characteristic configuration.
+    - Update support for interactive GATT utility.
+  * Fixes: NB#229881 - SDP records contain strange GATT related service
+  entries
+  * Fixes: NB#212458 - AVDTP Suspend times out with BH-903
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Wed, 16 Mar 2011 13:49:31 +0200
+
 bluez (4.89-0maemo4) unstable; urgency=low
 
   * Fixes: NB#228762 - [NFC] Easy-connect fails if BT is switched off
