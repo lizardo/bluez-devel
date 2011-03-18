@@ -1,3 +1,10 @@
+bluez (4.90-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#234914 - After pairing devices UI discovery list
+    indicates "No devices found"
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Fri, 18 Mar 2011 11:28:29 +0200
+
 bluez (4.90-0maemo1) unstable; urgency=low
 
   * New upstream release
