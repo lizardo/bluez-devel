@@ -1,3 +1,10 @@
+bluez (4.90-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#238016 - Distinct error type needed for the case where an
+  endpoint type (e.g. A2DP sink) is disabled
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Sun, 20 Mar 2011 16:37:51 +0200
+
 bluez (4.90-0maemo2) unstable; urgency=low
 
   * Fixes: NB#234914 - After pairing devices UI discovery list
