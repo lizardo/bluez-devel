@@ -1,3 +1,12 @@
+bluez (4.90-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#236813 - bluetooth daemon does not recover and loses
+  adapter after auto-restart due to KILL/TERM
+  * Fixes: NB#236031 - BT Adapter request session does not turn ON
+  the BT hardware in DUT, while doing NFC sharing 2nd time
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Wed, 23 Mar 2011 17:44:44 +0200
+
 bluez (4.90-0maemo3) unstable; urgency=low
 
   * Fixes: NB#238016 - Distinct error type needed for the case where an
