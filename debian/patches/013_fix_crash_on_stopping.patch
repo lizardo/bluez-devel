@@ -1,0 +1,61 @@
+commit 80958057369d56d090b90929f85a0e89673a3d5c
+Author: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date:   Mon Mar 21 14:18:46 2011 +0200
+
+    Fix crash when unregistering a2dp driver before media driver
+    
+    Since media driver uses a2dp to register its sep and store a pointer,
+    this pointer may be invalid/freed when media driver is unregistered.
+    
+    To fix this now a2dp will also release any sep registered using media
+    API.
+    
+    It also protect from future changes on the order of drivers removal by
+    checking if pointers (sep or endpoint) are still available in the list
+    before removing them.
+
+diff --git a/audio/a2dp.c b/audio/a2dp.c
+index ea4805c..8595350 100644
+--- a/audio/a2dp.c
++++ b/audio/a2dp.c
+@@ -1517,6 +1517,9 @@ proceed:
+ 
+ static void a2dp_unregister_sep(struct a2dp_sep *sep)
+ {
++	if (sep->endpoint)
++		media_endpoint_release(sep->endpoint);
++
+ 	avdtp_unregister_sep(sep->lsep);
+ 	g_free(sep);
+ }
+@@ -1648,12 +1651,16 @@ void a2dp_remove_sep(struct a2dp_sep *sep)
+ 	struct a2dp_server *server = sep->server;
+ 
+ 	if (sep->type == AVDTP_SEP_TYPE_SOURCE) {
++		if (g_slist_find(server->sources, sep) == NULL)
++			return;
+ 		server->sources = g_slist_remove(server->sources, sep);
+ 		if (server->sources == NULL && server->source_record_id) {
+ 			remove_record_from_server(server->source_record_id);
+ 			server->source_record_id = 0;
+ 		}
+ 	} else {
++		if (g_slist_find(server->sinks, sep) == NULL)
++			return;
+ 		server->sinks = g_slist_remove(server->sinks, sep);
+ 		if (server->sinks == NULL && server->sink_record_id) {
+ 			remove_record_from_server(server->sink_record_id);
+diff --git a/audio/media.c b/audio/media.c
+index d5fb29c..4b389c6 100644
+--- a/audio/media.c
++++ b/audio/media.c
+@@ -108,6 +108,9 @@ static void media_endpoint_remove(struct media_endpoint *endpoint)
+ {
+ 	struct media_adapter *adapter = endpoint->adapter;
+ 
++	if (g_slist_find(adapter->endpoints, endpoint) == NULL)
++		return;
++
+ 	info("Endpoint unregistered: sender=%s path=%s", endpoint->sender,
+ 			endpoint->path);
+ 
