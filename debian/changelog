@@ -1,3 +1,9 @@
+bluez (4.90-0maemo5) unstable; urgency=low
+
+  * Add upstream patch to fix crash on stopping bluetoothd
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Thu, 24 Mar 2011 10:39:19 +0200
+
 bluez (4.90-0maemo4) unstable; urgency=low
 
   * Fixes: NB#236813 - bluetooth daemon does not recover and loses
