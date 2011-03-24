@@ -7,7 +7,7 @@ Standards-Version: 3.8.0
 
 Package: bluez
 Architecture: any
-Depends: ${shlibs:Depends}, dbus
+Depends: ${shlibs:Depends}, dbus, csd-call (>= 1.0.40)
 Recommends: dsme, osso-product-info
 Provides: bluez-utils
 Replaces: bluez-utils

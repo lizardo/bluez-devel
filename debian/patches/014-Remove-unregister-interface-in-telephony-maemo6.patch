@@ -1,0 +1,43 @@
+From 015e26129674116dd697af2fb5386cb2568cabc8 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Wed, 23 Mar 2011 15:14:57 +0200
+Subject: [PATCH] Remove unregister interface in telephony-maemo6
+
+g_dbus_unregister_interface is removed from maemo6 telephony driver.
+Interface com.nokia.MaemoTelephony is not used as result of changes
+in csd back-end. CreateWith was replaced by Create and CreateFromLast
+method calls, and set last number is implemented directly in csd.
+
+Registration of this interface was removed due to these changes.
+---
+ audio/telephony-maemo6.c |    7 -------
+ 1 files changed, 0 insertions(+), 7 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index ff851f3..55f6a30 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -66,10 +66,6 @@ enum net_registration_status {
+ 	NETWORK_REG_STATUS_UNKOWN
+ };
+ 
+-/* Driver definitions */
+-#define TELEPHONY_MAEMO_PATH		"/com/nokia/MaemoTelephony"
+-#define TELEPHONY_MAEMO_INTERFACE	"com.nokia.MaemoTelephony"
+-
+ /* CSD CALL plugin D-Bus definitions */
+ #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
+ #define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
+@@ -1923,9 +1919,6 @@ void telephony_exit(void)
+ 	g_slist_free(watches);
+ 	watches = NULL;
+ 
+-	g_dbus_unregister_interface(connection, TELEPHONY_MAEMO_PATH,
+-						TELEPHONY_MAEMO_INTERFACE);
+-
+ 	dbus_connection_unref(connection);
+ 	connection = NULL;
+ 
+-- 
+1.7.1
+
