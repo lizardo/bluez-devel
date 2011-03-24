@@ -1,3 +1,12 @@
+bluez (4.90-0maemo6) unstable; urgency=low
+
+  * Fixes: NB#237461 - Redial from HF fails after turning bluetooth off
+  and on
+  * Add upstream patch to fix crash on stopping bluetoothd when headset
+  connected
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Thu, 24 Mar 2011 13:29:43 +0200
+
 bluez (4.90-0maemo5) unstable; urgency=low
 
   * Add upstream patch to fix crash on stopping bluetoothd
