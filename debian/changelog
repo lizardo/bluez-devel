@@ -1,3 +1,10 @@
+bluez (4.91-0maemo2) unstable; urgency=low
+
+  * Fixes: NB#242067 - BT HFP: carkit thinks outgoing call proceeds when
+  cellular offline
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Fri, 01 Apr 2011 17:06:39 +0300
+
 bluez (4.91-0maemo1) unstable; urgency=low
 
   * New upstream release
