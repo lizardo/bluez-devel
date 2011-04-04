@@ -1,3 +1,10 @@
+bluez (4.91-0maemo3) unstable; urgency=low
+
+  * Fixes: NB#230958 - After reconnection Music is routed to device speaker
+  instead of Bluetooth Headset
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Mon, 04 Apr 2011 12:26:28 +0300
+
 bluez (4.91-0maemo2) unstable; urgency=low
 
   * Fixes: NB#242067 - BT HFP: carkit thinks outgoing call proceeds when
