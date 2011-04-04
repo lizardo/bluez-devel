@@ -1,3 +1,9 @@
+bluez (4.91-0maemo5) unstable; urgency=low
+
+  * Fixes: NB#234409 - Bluetoothd crash during automated headset tests
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Mon, 04 Apr 2011 16:03:38 +0300
+
 bluez (4.91-0maemo4) unstable; urgency=low
 
   * Fixes: NB#241964 - BT HFP: Bluetoothd dies when eSCO gets torn down with
