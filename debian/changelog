@@ -1,3 +1,10 @@
+bluez (4.91-0maemo4) unstable; urgency=low
+
+  * Fixes: NB#241964 - BT HFP: Bluetoothd dies when eSCO gets torn down with
+    Daimler carkit
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Mon, 04 Apr 2011 12:57:46 +0300
+
 bluez (4.91-0maemo3) unstable; urgency=low
 
   * Fixes: NB#230958 - After reconnection Music is routed to device speaker
