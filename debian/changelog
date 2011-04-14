@@ -1,3 +1,10 @@
+bluez (4.91-0maemo6) unstable; urgency=low
+
+  * Fixes: NB#249717 - [BT_Audio] Nokia BH-504 dies in multi-profile audio use
+  case
+
+ -- Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>  Thu, 14 Apr 2011 10:21:41 +0300
+
 bluez (4.91-0maemo5) unstable; urgency=low
 
   * Fixes: NB#234409 - Bluetoothd crash during automated headset tests
