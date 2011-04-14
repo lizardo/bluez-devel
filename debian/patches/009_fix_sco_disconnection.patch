@@ -1,0 +1,27 @@
+commit 2bcd61690a5ff4c13fa261abb23e69437e08592c
+Author: Luiz Augusto von Dentz <luiz.dentz-von@nokia.com>
+Date:   Fri Apr 8 16:50:42 2011 +0300
+
+    Fix not waiting for POLLERR when disconnecting SCO
+    
+    To make sure the SCO link is really disconnected we should wait for
+    POLLERR since POLLHUP does not necessarily means the link is
+    completely disconnected just that no further data can be sent/received.
+    
+    Note that this depend on a fix of SCO socket shutdown in kernel to wait
+    for disconnect confimation to then kill/destroy the socket indicating
+    the err/reason using POLLERR.
+
+diff --git a/audio/headset.c b/audio/headset.c
+index c605e9d..819e0f8 100644
+--- a/audio/headset.c
++++ b/audio/headset.c
+@@ -2548,7 +2548,7 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
+ 					AUDIO_HEADSET_INTERFACE, "State",
+ 					DBUS_TYPE_STRING, &state_str);
+ 		hs->sco_id = g_io_add_watch(hs->sco,
+-					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
++					G_IO_ERR | G_IO_NVAL,
+ 					(GIOFunc) sco_cb, dev);
+ 
+ 		g_dbus_emit_signal(dev->conn, dev->path,
