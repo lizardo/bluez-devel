@@ -2012,6 +2012,7 @@ gboolean avrcp_connect(struct audio_device *dev)
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
 				BT_IO_OPT_PSM, AVCTP_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
 	if (err) {
 		avctp_set_state(control, AVCTP_STATE_DISCONNECTED);
