@@ -1,3 +1,9 @@
+bluez (4.91-0maemo7) unstable; urgency=low
+
+  * Fixes: NB#259905 Valgrind reports invalid read when disconnecting headset
+
+ -- Lukasz Pawlik <Lukasz.Pawlik@comarch.com>  Mon, 30 May 2011 09:43:36 +0200
+
 bluez (4.91-0maemo6) unstable; urgency=low
 
   * Fixes: NB#249717 - [BT_Audio] Nokia BH-504 dies in multi-profile audio use
