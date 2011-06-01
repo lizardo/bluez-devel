@@ -1,0 +1,31 @@
+commit a740e8599e9e529ffc6ef621e763160edae2858d
+Author: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date:   Fri May 27 16:33:51 2011 +0300
+
+    Fix invalid read and possible memory leaks
+    
+    Fixed incorrect update of transport->owners GSlist in
+    media_transport_free. Removal of list entries within 'for' loop leads to
+    invalid read of memory (l = l->next) and memory leaks.
+
+diff --git a/audio/transport.c b/audio/transport.c
+index aa3308d..7c99207 100644
+--- a/audio/transport.c
++++ b/audio/transport.c
+@@ -808,10 +808,13 @@ static GDBusSignalTable transport_signals[] = {
+ static void media_transport_free(void *data)
+ {
+ 	struct media_transport *transport = data;
+-	GSList *l;
++	GSList *l = transport->owners;
+ 
+-	for (l = transport->owners; l; l = l->next)
+-		media_transport_remove(transport, l->data);
++	while (l) {
++		struct media_owner *owner = l->data;
++		l = l->next;
++		media_transport_remove(transport, owner);
++	}
+ 
+ 	g_slist_free(transport->owners);
+ 

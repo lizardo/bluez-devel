@@ -1,0 +1,33 @@
+commit 09b6fbef703b8537775c3e923fa07b128a1fda0c
+Author: Rafal Michalski <michalski.raf@gmail.com>
+Date:   Fri May 27 14:59:17 2011 +0200
+
+    Fix invalid read of memory in avdtp module
+    
+    Fixed incorrect update of server->sessions GSlist in avdtp_exit.
+    Previosly it was leading to invalid read of memory (l = l->next)
+    (and possible memory leaks) since after invoking avdtp_unref in
+    connection_lost, l pointer was not valid anymore (previously assignment
+    l = l->next was used after invoking connection_lost in for loop).
+
+diff --git a/audio/avdtp.c b/audio/avdtp.c
+index 252810e..7e398db 100644
+--- a/audio/avdtp.c
++++ b/audio/avdtp.c
+@@ -3861,9 +3861,15 @@ void avdtp_exit(const bdaddr_t *src)
+ 	if (!server)
+ 		return;
+ 
+-	for (l = server->sessions; l; l = l->next) {
++	l = server->sessions;
++	while (l) {
+ 		struct avdtp *session = l->data;
+ 
++		l = l->next;
++		/* value of l pointer should be updated before invoking
++		 * connection_lost since it internally uses avdtp_unref
++		 * which operates on server->session list as well
++		 */
+ 		connection_lost(session, -ECONNABORTED);
+ 	}
+ 
