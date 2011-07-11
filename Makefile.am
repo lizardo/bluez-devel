@@ -226,7 +226,7 @@ builtin_sources += thermometer/main.c \
 			thermometer/thermometer.h thermometer/thermometer.c \
 			alert/main.c alert/server.h alert/server.c \
 			time/main.c time/server.h time/server.c \
-			time/manager.h time/manager.c \
+			time/manager.h time/manager.c time/provider.c \
 			plugins/gatt-example.c \
 			proximity/main.c proximity/manager.h proximity/manager.c \
 			proximity/monitor.h proximity/monitor.c \
@@ -335,6 +335,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
 			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c \
+			time/provider-dummy.c \
 			proximity/proximity.conf
 
 if ALSA
@@ -474,6 +475,9 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 
 audio/telephony.c: audio/@TELEPHONY_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
+
+time/provider.c: time/@TIME_PROVIDER@
+	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 sap/sap.c: sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@

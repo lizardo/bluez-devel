@@ -36,6 +36,7 @@ src/builtin.h
 src/bluetoothd
 audio/telephony.c
 sap/sap.c
+time/provider.c
 scripts/bluetooth.rules
 scripts/97-bluetooth.rules
 scripts/97-bluetooth-hid2hci.rules

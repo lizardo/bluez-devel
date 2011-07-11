@@ -198,6 +198,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	dfutool_enable=no
 	datafiles_enable=yes
 	telephony_driver=dummy
+	time_provider=dummy
 	maemo6_enable=no
 	sap_driver=dummy
 	dbusoob_enable=no
@@ -338,6 +339,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(gatt, AC_HELP_STRING([--enable-gatt], [enable gatt module]), [
 		gatt_enable=${enableval}
 	])
+
+	AC_ARG_WITH(time, AC_HELP_STRING([--with-time=PROVIDER], [select time provider]), [
+		time_provider=${withval}
+	])
+
+	AC_SUBST([TIME_PROVIDER], [provider-${time_provider}.c])
 
 	misc_cflags=""
 	misc_ldflags=""

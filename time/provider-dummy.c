@@ -22,34 +22,33 @@
  *
  */
 
-enum {
-	UPDATE_RESULT_SUCCESSFUL = 0,
-	UPDATE_RESULT_CANCELED = 1,
-	UPDATE_RESULT_NO_CONN = 2,
-	UPDATE_RESULT_ERROR = 3,
-	UPDATE_RESULT_TIMEOUT = 4,
-	UPDATE_RESULT_NOT_ATTEMPTED = 5,
-};
+#include <stdint.h>
 
-enum {
-	UPDATE_STATE_IDLE = 0,
-	UPDATE_STATE_PENDING = 1,
-};
+#include "adapter.h"
+#include "server.h"
+#include "log.h"
 
-enum {
-	GET_REFERENCE_UPDATE = 1,
-	CANCEL_REFERENCE_UPDATE = 2,
-};
+int time_provider_init(void)
+{
+	DBG("");
 
-int time_server_init(void);
-void time_server_exit(void);
+	return 0;
+}
 
-int time_server_register(struct btd_adapter *adapter);
+void time_provider_exit(void)
+{
+	DBG("");
+}
 
-/* Time provider init and exit routines. Implemented by provider-*.c */
-int time_provider_init(void);
-void time_provider_exit(void);
+void time_provider_status(uint8_t *state, uint8_t *result)
+{
+	*state = UPDATE_STATE_IDLE;
+	*result = UPDATE_RESULT_NOT_ATTEMPTED;
+}
 
-/* Time provider control and status routines. Implemented by provider-*.c */
-void time_provider_status(uint8_t *state, uint8_t *result);
-uint8_t time_provider_control(int op);
+uint8_t time_provider_control(int op)
+{
+	DBG("");
+
+	return 0;
+}

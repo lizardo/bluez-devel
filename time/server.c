@@ -150,21 +150,12 @@ static uint8_t time_update_control(struct attribute *a,
 {
 	DBG("handle 0x%04x", a->handle);
 
-	if (a->len != 1)
+	if (a->len != 1) {
 		DBG("Invalid control point value size: %d", a->len);
-
-	switch (a->data[0]) {
-	case GET_REFERENCE_UPDATE:
-		DBG("Get Reference Update");
-		break;
-	case CANCEL_REFERENCE_UPDATE:
-		DBG("Cancel Reference Update");
-		break;
-	default:
-		DBG("Unknown command: 0x%02x", a->data[0]);
+		return 0;
 	}
 
-	return 0;
+	return time_provider_control(a->data[0]);
 }
 
 static uint8_t time_update_status(struct attribute *a,
@@ -176,8 +167,8 @@ static uint8_t time_update_status(struct attribute *a,
 
 	DBG("handle 0x%04x", a->handle);
 
-	value[0] = UPDATE_STATE_IDLE;
-	value[1] = UPDATE_RESULT_SUCCESSFUL;
+	time_provider_status(&value[0], &value[1]);
+
 	attrib_db_update(adapter, a->handle, NULL, value, sizeof(value), NULL);
 
 	return 0;
@@ -224,9 +215,13 @@ int time_server_register(struct btd_adapter *adapter)
 
 int time_server_init(void)
 {
+	if (time_provider_init() < 0)
+		return -1;
+
 	return 0;
 }
 
 void time_server_exit(void)
 {
+	time_provider_exit();
 }
