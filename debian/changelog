@@ -1,3 +1,14 @@
+bluez (4.91-0maemo8) unstable; urgency=low
+
+  * Fixes: NB#260997 - [VALGRIND] Invalid memory reads/writes/frees on bluetoothd
+  exit during music playback
+  * Fixes: NB#245254 - BT connection failed information banner shown in offline
+  mode before connection to headset is established
+  * Fixes: NB#252899 - Some bluetooth headsets (BH-109, BH-212, Samsung WEP490)
+  do not get into CONNECTED state
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Fri, 01 Jul 2011 11:52:19 +0200
+
 bluez (4.91-0maemo7) unstable; urgency=low
 
   * Fixes: NB#259905 Valgrind reports invalid read when disconnecting headset
