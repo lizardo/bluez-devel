@@ -1,0 +1,48 @@
+From 3b7e90d9db2df4fcf287c109e95075755e013d20 Mon Sep 17 00:00:00 2001
+From: Daniel Orstadius <daniel.orstadius@nokia.com>
+Date: Fri, 27 May 2011 11:26:18 +0300
+Subject: [PATCH 187/232] Init telephony before adding the HFP SDP record
+
+By patch b9d85c00108977b24ae91ea8ecedb9ceffe6f648 the initialization
+of the telephony subsystem is delayed in the bluetoothd startup
+procedure. As a result the SupportedFeatures bitmap has not been set
+when creating the HFP SDP record. This patch changes the order of
+the telephony initialization (via the state_changed function) and
+the registration of the record, so that it gets the right value.
+
+Although the corresponding bit in +BRSF is correctly set, the
+missing bit for the "Three-way calling" feature in the SDP record
+causes some headsets not to send AT+CHLD=? in certain situations.
+This results in failed connections since BlueZ does not enter the
+"connected" state on the headset interface before that command is
+received, if the feature is supported by both sides.
+---
+ audio/manager.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/audio/manager.c b/audio/manager.c
+index 3518137..911af45 100644
+--- a/audio/manager.c
++++ b/audio/manager.c
+@@ -909,15 +909,15 @@ static int headset_server_probe(struct btd_adapter *adapter)
+ 	if (!adp)
+ 		return -EINVAL;
+ 
++	btd_adapter_register_powered_callback(adapter, state_changed);
++	state_changed(adapter, TRUE);
++
+ 	err = headset_server_init(adp);
+ 	if (err < 0) {
+ 		audio_adapter_unref(adp);
+ 		return err;
+ 	}
+ 
+-	btd_adapter_register_powered_callback(adapter, state_changed);
+-	state_changed(adapter, TRUE);
+-
+ 	return 0;
+ }
+ 
+-- 
+1.7.0.4
+
