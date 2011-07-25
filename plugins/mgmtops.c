@@ -1385,6 +1385,27 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	adapter_set_state(adapter, state);
 }
 
+static void rssi_monitor_alert(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_ev_rssi_monitor_alert *ev = buf;
+	struct controller_info *info;
+
+	if (len != sizeof(*ev)) {
+		error("Too small rssi_monitor_alert event");
+		return;
+	}
+
+	if (index > max_index) {
+		error("Unexpected index %u in RSSI monitor alert event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_rssi_monitor_alert(&info->bdaddr, &ev->bdaddr,
+							ev->alert_type);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1488,6 +1509,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DISCOVERING:
 		mgmt_discovering(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_RSSI_MONITOR_ALERT:
+		rssi_monitor_alert(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
