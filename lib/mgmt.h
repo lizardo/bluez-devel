@@ -215,6 +215,18 @@ struct mgmt_cp_unblock_device {
 	bdaddr_t bdaddr;
 } __packed;
 
+#define MGMT_OP_ENABLE_RSSI_MONITOR	0x001F
+struct mgmt_cp_enable_rssi_monitor {
+	bdaddr_t bdaddr;
+	int8_t low;
+	int8_t high;
+} __packed;
+
+#define MGMT_OP_DISABLE_RSSI_MONITOR	0x0020
+struct mgmt_cp_disable_rssi_monitor {
+	bdaddr_t bdaddr;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -305,3 +317,9 @@ struct mgmt_ev_remote_name {
 } __packed;
 
 #define MGMT_EV_DISCOVERING		0x0014
+
+#define MGMT_EV_RSSI_MONITOR_ALERT	0x0015
+struct mgmt_ev_rssi_monitor_alert {
+	bdaddr_t bdaddr;
+	uint8_t alert_type;
+} __packed;
