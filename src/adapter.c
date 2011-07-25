@@ -3649,6 +3649,7 @@ gboolean btd_adapter_enable_rssi_monitor(struct btd_adapter *adapter,
 					gpointer user_data)
 {
 	struct rssi_monitor_data *monitor;
+	int err;
 
 	if (g_slist_find_custom(adapter->rssi_monitors, bdaddr,
 						rssi_monitor_bacmp))
@@ -3657,6 +3658,14 @@ gboolean btd_adapter_enable_rssi_monitor(struct btd_adapter *adapter,
 	monitor = g_try_new(struct rssi_monitor_data, 1);
 	if (monitor == NULL)
 		return FALSE;
+
+	err = adapter_ops->enable_rssi_monitor(adapter->dev_id, bdaddr, low,
+									high);
+	if (err < 0) {
+		error("Enable RSSI threshold monitor: %s", strerror(-err));
+		g_free(monitor);
+		return FALSE;
+	}
 
 	bacpy(&monitor->bdaddr, bdaddr);
 	monitor->cb = cb;
@@ -3672,6 +3681,7 @@ gboolean btd_adapter_disable_rssi_monitor(struct btd_adapter *adapter,
 {
 	struct rssi_monitor_data *monitor;
 	GSList *l;
+	int err;
 
 	l = g_slist_find_custom(adapter->rssi_monitors, bdaddr,
 						rssi_monitor_bacmp);
@@ -3684,5 +3694,7 @@ gboolean btd_adapter_disable_rssi_monitor(struct btd_adapter *adapter,
 								monitor);
 	g_free(monitor);
 
-	return TRUE;
+	err = adapter_ops->disable_rssi_monitor(adapter->dev_id, bdaddr);
+
+	return (err < 0 ? FALSE : TRUE);
 }
