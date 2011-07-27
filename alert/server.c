@@ -68,6 +68,7 @@ struct agent {
 
 static DBusConnection *connection = NULL;
 static uint8_t ringer_setting = 0xff;
+static uint16_t handle_ringer_setting = 0x0000;
 static struct agent agent;
 
 static void agent_operation(const char *operation)
@@ -220,6 +221,7 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 			ringer_setting_read, NULL,
+			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_ringer_setting,
 			GATT_OPT_INVALID);
 }
 
@@ -260,8 +262,33 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *notify_ringer_setting(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct btd_adapter *adapter = data;
+	const char *setting;
+
+	if (agent.name == NULL)
+		return NULL;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &setting,
+							DBUS_TYPE_INVALID))
+		return NULL;
+
+	if (g_str_equal(setting, "Silent"))
+		ringer_setting = RINGER_SILENT;
+	else
+		ringer_setting = RINGER_NORMAL;
+
+	attrib_db_update(adapter, handle_ringer_setting, NULL, &ringer_setting,
+						sizeof(ringer_setting), NULL);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static GDBusMethodTable alert_methods[] = {
-	{ "RegisterAgent",	"o",	"",	register_agent },
+	{ "RegisterAgent",	"o",	"",	register_agent		},
+	{ "NotifyRingerSetting","s",	"",	notify_ringer_setting	},
 	{ }
 };
 
