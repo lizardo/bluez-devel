@@ -87,11 +87,164 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	case ATT_OP_HANDLE_IND:
 		g_print("Indication   handle = 0x%04x value: ", handle);
 		break;
+	case ATT_OP_FIND_BY_TYPE_REQ: {
+		uint16_t end = att_get_u16(&pdu[3]);
+		uint16_t type = att_get_u16(&pdu[5]);
+		uint16_t value = att_get_u16(&pdu[7]);
+
+		g_print("XXX: ATT_OP_FIND_BY_TYPE_REQ(start=0x%04x, end=0x%04x,"
+				" type=0x%04x, value=0x%04x), len=%d\n", handle,
+				end, type, value, len);
+
+		if (handle != 0x0001) {
+			olen = enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, handle,
+					ATT_ECODE_ATTR_NOT_FOUND, opdu, sizeof(opdu));
+			break;
+		}
+
+		opdu[0] = ATT_OP_FIND_BY_TYPE_RESP;
+		olen = 5;
+		switch (value) {
+		case 0x1801:
+			att_put_u16(0x0001, &opdu[1]);
+			att_put_u16(0x0004, &opdu[3]);
+			break;
+		case 0x1805:
+			att_put_u16(0x0005, &opdu[1]);
+			att_put_u16(0x0007, &opdu[3]);
+			break;
+		case 0x1806:
+			att_put_u16(0x0008, &opdu[1]);
+			att_put_u16(0x000c, &opdu[3]);
+			break;
+		case 0x2a60:
+			/* Phone Alert Status Service ? */
+			att_put_u16(0x000d, &opdu[1]);
+			att_put_u16(0x0015, &opdu[3]);
+			break;
+		default:
+			g_print("XXX: unsupported service: 0x%04x\n", value);
+			olen = enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, handle,
+					ATT_ECODE_ATTR_NOT_FOUND, opdu, sizeof(opdu));
+		}
+
+		break;
+	}
+	case ATT_OP_READ_BY_TYPE_REQ: {
+		uint16_t end = att_get_u16(&pdu[3]);
+		uint16_t type = att_get_u16(&pdu[5]);
+		g_print("XXX: ATT_OP_READ_BY_TYPE_REQ(start=0x%04x, end=0x%04x,"
+				" type=0x%04x), len=%d\n", handle, end, type, len);
+		if (type != 0x2803) {
+			olen = enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, handle,
+					ATT_ECODE_ATTR_NOT_FOUND, opdu, sizeof(opdu));
+			break;
+		}
+
+		opdu[0] = ATT_OP_READ_BY_TYPE_RESP;
+		opdu[1] = 7;
+		olen = 2;
+		switch (handle) {
+		case 0x0005:
+			/* service 0x1805 */
+			if (end >= 0x0007) {
+				olen += opdu[1];
+				att_put_u16(0x0006, &opdu[2]);
+				opdu[4] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
+				att_put_u16(0x0007, &opdu[5]);
+				att_put_u16(0x2A2B, &opdu[7]);
+			}
+			break;
+		case 0x0008:
+			/* service 0x1806 */
+			if (end >= 0x000a) {
+				olen += opdu[1];
+				att_put_u16(0x0009, &opdu[2]);
+				opdu[4] = ATT_CHAR_PROPER_WRITE_WITHOUT_RESP;
+				att_put_u16(0x000a, &opdu[5]);
+				att_put_u16(0x2A16, &opdu[7]);
+			}
+
+			if (end >= 0x000c) {
+				olen += opdu[1];
+				att_put_u16(0x000b, &opdu[9]);
+				opdu[11] = ATT_CHAR_PROPER_READ;
+				att_put_u16(0x000c, &opdu[12]);
+				att_put_u16(0x2A17, &opdu[14]);
+			}
+			break;
+		case 0x000d:
+			/* service 0x2a60 */
+			if (end >= 0x0010) {
+				olen += opdu[1];
+				att_put_u16(0x000e, &opdu[2]);
+				opdu[4] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
+				att_put_u16(0x000f, &opdu[5]);
+				att_put_u16(0x2a3f, &opdu[7]);
+			}
+
+			if (end >= 0x0013) {
+				olen += opdu[1];
+				att_put_u16(0x0011, &opdu[9]);
+				opdu[11] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
+				att_put_u16(0x0012, &opdu[12]);
+				att_put_u16(0x2a41, &opdu[14]);
+			}
+
+			if (end >= 0x0015) {
+				olen += opdu[1];
+				att_put_u16(0x0014, &opdu[16]);
+				opdu[18] = ATT_CHAR_PROPER_WRITE_WITHOUT_RESP;
+				att_put_u16(0x0015, &opdu[19]);
+				att_put_u16(0x2a40, &opdu[21]);
+			}
+			break;
+		default:
+			g_print("XXX: unsupported service handle: 0x%04x\n", handle);
+			olen = enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, handle,
+					ATT_ECODE_ATTR_NOT_FOUND, opdu, sizeof(opdu));
+		}
+
+		break;
+	}
+	case ATT_OP_FIND_INFO_REQ: {
+		uint16_t end = att_get_u16(&pdu[3]);
+		g_print("XXX: ATT_OP_FIND_INFO_REQ(start=0x%04x, end=0x%04x), len=%d\n", handle, end, len);
+
+		opdu[0] = ATT_OP_FIND_INFO_RESP;
+		opdu[1] = 0x01;
+		olen = 2;
+		switch (handle) {
+		case 0x0005:
+			/* service 0x1805 */
+			att_put_u16(0x0005, &opdu[2]);
+			att_put_u16(0x2800, &opdu[4]);
+			olen += 4;
+			if (end >= 0x0003) {
+				att_put_u16(0x0006, &opdu[6]);
+				att_put_u16(0x2803, &opdu[8]);
+				olen += 4;
+			}
+			if (end >= 0x0004) {
+				att_put_u16(0x0007, &opdu[10]);
+				att_put_u16(0x2A2B, &opdu[12]);
+				olen += 4;
+			}
+			break;
+		default:
+			g_print("XXX: unsupported service handle: 0x%04x\n", handle);
+			olen = enc_error_resp(ATT_OP_FIND_INFO_REQ, handle,
+					ATT_ECODE_ATTR_NOT_FOUND, opdu, sizeof(opdu));
+		}
+
+		break;
+	}
 	default:
-		g_print("Invalid opcode\n");
+		g_print("Invalid opcode: 0x%02x\n", pdu[0]);
 		return;
 	}
 
+	if (pdu[0] == ATT_OP_HANDLE_NOTIFY || pdu[0] == ATT_OP_HANDLE_IND) {
 	for (i = 3; i < len; i++)
 		g_print("%02x ", pdu[i]);
 
@@ -101,6 +254,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 		return;
 
 	olen = enc_confirmation(opdu, sizeof(opdu));
+	}
 
 	if (olen > 0)
 		g_attrib_send(attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
@@ -109,11 +263,13 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 static gboolean listen_start(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
-
 	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, events_handler,
 							attrib, NULL);
 	g_attrib_register(attrib, ATT_OP_HANDLE_IND, events_handler,
 							attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_FIND_BY_TYPE_REQ, events_handler, attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_READ_BY_TYPE_REQ, events_handler, attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_FIND_INFO_REQ, events_handler, attrib, NULL);
 
 	return FALSE;
 }
@@ -153,7 +309,8 @@ static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
 	}
 
 done:
-	g_main_loop_quit(event_loop);
+	if (opt_listen == FALSE)
+		g_main_loop_quit(event_loop);
 }
 
 static void primary_by_uuid_cb(GSList *ranges, guint8 status,
