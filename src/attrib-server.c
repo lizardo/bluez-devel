@@ -783,6 +783,7 @@ static void channel_disconnect(void *user_data)
 	g_slist_free(channel->notify);
 	g_slist_free(channel->indicate);
 	g_slist_free_full(channel->configs, g_free);
+	g_attrib_unref(channel->attrib);
 
 	g_free(channel);
 }
@@ -911,7 +912,7 @@ done:
 							NULL, NULL, NULL);
 }
 
-int attrib_channel_attach(GAttrib *attrib, gboolean out)
+guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 {
 	struct gatt_channel *channel;
 	GIOChannel *io;
@@ -931,7 +932,8 @@ int attrib_channel_attach(GAttrib *attrib, gboolean out)
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
 		g_error_free(gerr);
-		return -EIO;
+		g_free(channel);
+		return 0;
 	}
 
 	if (channel->mtu > ATT_MAX_MTU)
@@ -953,7 +955,30 @@ int attrib_channel_attach(GAttrib *attrib, gboolean out)
 
 	clients = g_slist_append(clients, channel);
 
-	return 0;
+	return channel->id;
+}
+
+static gint channel_id_cmp(gconstpointer data, gconstpointer user_data)
+{
+	const struct gatt_channel *channel = data;
+	guint id = GPOINTER_TO_UINT(user_data);
+
+	return channel->id - id;
+}
+
+gboolean attrib_channel_detach(guint id)
+{
+	struct gatt_channel *channel;
+	GSList *l;
+
+	l = g_slist_find_custom(clients, GUINT_TO_POINTER(id),
+						channel_id_cmp);
+	if (!l)
+		return FALSE;
+
+	channel = l->data;
+
+	return g_attrib_unregister(channel->attrib, channel->id);
 }
 
 static void connect_event(GIOChannel *io, GError *err, void *user_data)
