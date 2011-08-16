@@ -87,6 +87,8 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data);
 int write_device_type(const bdaddr_t *sba, const bdaddr_t *dba,
 						device_type_t type);
 device_type_t read_device_type(const bdaddr_t *sba, const bdaddr_t *dba);
+int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key);
+gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 
