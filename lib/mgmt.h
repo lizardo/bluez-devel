@@ -227,6 +227,35 @@ struct mgmt_cp_disable_rssi_monitor {
 	bdaddr_t bdaddr;
 } __packed;
 
+struct smp_ltk_info {
+	uint8_t enc_size;
+	uint16_t ediv;
+	uint8_t rand[8];
+} __packed;
+
+struct smp_irsk_info {
+	uint8_t addr_type;
+} __packed;
+
+struct mgmt_smp_key_info {
+	bdaddr_t bdaddr;
+	uint8_t type;
+	uint8_t pin_len;
+	uint8_t val[16];
+	union {
+		struct smp_ltk_info ltk;
+		struct smp_irsk_info irsk;
+		uint8_t data[0];
+	};
+} __packed;
+
+#define MGMT_OP_LOAD_SMP_KEYS		0x0021
+struct mgmt_cp_load_smp_keys {
+	uint8_t debug_keys;
+	uint16_t key_count;
+	struct mgmt_smp_key_info keys[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -322,4 +351,10 @@ struct mgmt_ev_remote_name {
 struct mgmt_ev_rssi_monitor_alert {
 	bdaddr_t bdaddr;
 	uint8_t alert_type;
+} __packed;
+
+#define MGMT_EV_NEW_SMP_KEY		0x0016
+struct mgmt_ev_new_smp_key {
+	uint8_t store_hint;
+	struct mgmt_smp_key_info key;
 } __packed;
