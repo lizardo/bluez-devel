@@ -3647,6 +3647,11 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int hciops_load_smp_keys(int index, GSList *keys)
+{
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3687,6 +3692,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_oob_data = hciops_read_local_oob_data,
 	.add_remote_oob_data = hciops_add_remote_oob_data,
 	.remove_remote_oob_data = hciops_remove_remote_oob_data,
+	.load_smp_keys = hciops_load_smp_keys,
 };
 
 static int hciops_init(void)
