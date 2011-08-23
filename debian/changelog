@@ -1,3 +1,10 @@
+bluez (4.91-0maemo11) unstable; urgency=low
+
+  * Fixes: NB#211405 - [BT_Audio][Routing Leak] Noise is heard in IHF
+  when call is answered using the answer key in BH 105 headset.
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Tue, 23 Aug 2011 18:50:27 +0300
+
 bluez (4.91-0maemo10) unstable; urgency=low
 
   * One patch is replaced and four added from upstream fixing regression
