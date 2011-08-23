@@ -1,3 +1,10 @@
+bluez (4.91-0maemo10) unstable; urgency=low
+
+  * One patch is replaced and four added from upstream fixing regression
+  in 4.91-0maemo9 that makes it ready for integration.
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Tue, 23 Aug 2011 15:50:57 +0300
+
 bluez (4.91-0maemo9) unstable; urgency=low
 
   * Fixes: NB#271902 - [NFC] Device is left in paired devices list after image
