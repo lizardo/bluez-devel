@@ -1,0 +1,27 @@
+From fad552de92f0bbacd808850b78dd49b8371c7493 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 5 Aug 2011 10:19:37 +0300
+Subject: [PATCH BlueZ] Fix cancel pending D-Bus call to ohmd
+
+Pending D-Bus call to ohmd daemon is canceled if telephony driver is
+unloaded before reply comes.
+---
+ audio/telephony-maemo6.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index cb29483..a3808d4 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -1528,6 +1528,8 @@ static void csd_call_free(void *data)
+ 	g_free(call->object_path);
+ 	g_free(call->number);
+ 
++	g_slist_foreach(pending, remove_pending_by_data, call);
++
+ 	g_free(call);
+ }
+ 
+-- 
+1.7.4.1
+
