@@ -1,0 +1,115 @@
+From c92a4af85f480c16f3ff017783c821304c899ce5 Mon Sep 17 00:00:00 2001
+From: Johan Hedberg <johan.hedberg@intel.com>
+Date: Mon, 11 Jul 2011 15:45:28 +0300
+Subject: [PATCH BlueZ 2/2] Clean up device bonding removal
+
+---
+ src/device.c |   43 ++++++++++++++-----------------------------
+ src/device.h |    2 +-
+ 2 files changed, 15 insertions(+), 30 deletions(-)
+
+diff --git a/src/device.c b/src/device.c
+index 0230203..118538b 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -225,6 +225,11 @@ gboolean device_is_paired(struct btd_device *device)
+ 	return device->paired;
+ }
+ 
++gboolean device_is_bonded(struct btd_device *device)
++{
++	return device->bonded;
++}
++
+ gboolean device_is_trusted(struct btd_device *device)
+ {
+ 	return device->trusted;
+@@ -825,7 +830,7 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn)
+ 		device->disconnects = g_slist_remove(device->disconnects, msg);
+ 	}
+ 
+-	if (device_is_paired(device) && !device->bonded)
++	if (device_is_paired(device) && !device_is_bonded(device))
+ 		device_set_paired(device, FALSE);
+ 
+ 	emit_property_changed(conn, device->path,
+@@ -911,7 +916,7 @@ struct btd_device *device_create(DBusConnection *conn,
+ 		device_block(conn, device);
+ 
+ 	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0) {
+-		device->paired = TRUE;
++		device_set_paired(device, TRUE);
+ 		device_set_bonded(device, TRUE);
+ 	}
+ 
+@@ -949,31 +954,6 @@ device_type_t device_get_type(struct btd_device *device)
+ 	return device->type;
+ }
+ 
+-void device_remove_bonding(struct btd_device *device)
+-{
+-	char filename[PATH_MAX + 1];
+-	char srcaddr[18], dstaddr[18];
+-	bdaddr_t bdaddr;
+-
+-	adapter_get_address(device->adapter, &bdaddr);
+-	ba2str(&bdaddr, srcaddr);
+-	ba2str(&device->bdaddr, dstaddr);
+-
+-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
+-			"linkkeys");
+-
+-	/* Delete the link key from storage */
+-	textfile_casedel(filename, dstaddr);
+-	device_set_bonded(device, FALSE);
+-
+-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
+-						"aliases");
+-	/* Remove alias when bonding is deleted */
+-	textfile_casedel(filename, dstaddr);
+-
+-	btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
+-}
+-
+ static void device_remove_stored(struct btd_device *device)
+ {
+ 	bdaddr_t src;
+@@ -983,8 +963,13 @@ static void device_remove_stored(struct btd_device *device)
+ 	adapter_get_address(device->adapter, &src);
+ 	ba2str(&device->bdaddr, addr);
+ 
+-	if (device->paired)
+-		device_remove_bonding(device);
++	if (device_is_bonded(device)) {
++		delete_entry(&src, "linkkeys", addr);
++		delete_entry(&src, "aliases", addr);
++		device_set_bonded(device, FALSE);
++		device_set_paired(device, FALSE);
++		btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
++	}
+ 	delete_entry(&src, "profiles", addr);
+ 	delete_entry(&src, "trusts", addr);
+ 	delete_entry(&src, "types", addr);
+diff --git a/src/device.h b/src/device.h
+index 18b21ae..6efcf63 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -68,6 +68,7 @@ struct agent *device_get_agent(struct btd_device *device);
+ gboolean device_is_busy(struct btd_device *device);
+ gboolean device_is_temporary(struct btd_device *device);
+ gboolean device_is_paired(struct btd_device *device);
++gboolean device_is_bonded(struct btd_device *device);
+ gboolean device_is_trusted(struct btd_device *device);
+ void device_set_paired(struct btd_device *device, gboolean paired);
+ void device_set_temporary(struct btd_device *device, gboolean temporary);
+@@ -77,7 +78,6 @@ gboolean device_is_connected(struct btd_device *device);
+ DBusMessage *device_create_bonding(struct btd_device *device,
+ 				DBusConnection *conn, DBusMessage *msg,
+ 				const char *agent_path, uint8_t capability);
+-void device_remove_bonding(struct btd_device *device);
+ void device_bonding_complete(struct btd_device *device, uint8_t status);
+ void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
+ gboolean device_is_creating(struct btd_device *device, const char *sender);
+-- 
+1.7.4.1
+

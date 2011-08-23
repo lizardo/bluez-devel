@@ -1,0 +1,31 @@
+From 6ae601652347bf1fd5bb8c4fe3df561459991987 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Tue, 14 Jun 2011 14:30:14 +0300
+Subject: [PATCH BlueZ 207/251] Fix remove device alias when bonding deleted
+
+Device alias is removed together with bonding information, such that
+new pairing does not reuse old name. This is useful in cases when
+name of paired device was changed after it was ones deleted.
+---
+ src/device.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/src/device.c b/src/device.c
+index 770e89a..ae6a0d5 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -965,6 +965,11 @@ void device_remove_bonding(struct btd_device *device)
+ 	/* Delete the link key from storage */
+ 	textfile_casedel(filename, dstaddr);
+ 
++	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
++						"aliases");
++	/* Remove alias when bonding is deleted */
++	textfile_casedel(filename, dstaddr);
++
+ 	btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
+ }
+ 
+-- 
+1.7.4.1
+
