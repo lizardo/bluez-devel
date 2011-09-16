@@ -1,3 +1,10 @@
+bluez (4.91-0maemo13) unstable; urgency=low
+
+  * Fixes: NB#281873 - Bluetoothd crash when disconnecting with BMW
+    protype carkit
+
+ -- Daniel Orstadius <daniel.orstadius@nokia.com>  Fri, 16 Sep 2011 16:37:02 +0300
+
 bluez (4.91-0maemo12) unstable; urgency=low
 
   * Fixes: NB#244055 - Wrong device type icon displayed in Bluetoth devices
