@@ -1,0 +1,24 @@
+commit 6e863c7e8394c40cd7e5dd57ac3f08f2cba09fc1
+Author: Syam Sidhardhan <syamsidhardh@gmail.com>
+Date:   Thu Aug 11 00:14:46 2011 +0530
+
+    Fix crash when disconnecting A2DP
+    
+    When we disconnect an A2DP device by immediate power off and quickly
+    also initiate a disconnection from our side, a crash is occurring. This
+    is happening because of the disconnect_timeout coming after freeing the
+    session.
+
+diff --git a/audio/avdtp.c b/audio/avdtp.c
+index 00762f2..11f6515 100644
+--- a/audio/avdtp.c
++++ b/audio/avdtp.c
+@@ -690,7 +690,7 @@ static void set_disconnect_timer(struct avdtp *session)
+ 		remove_disconnect_timer(session);
+ 
+ 	if (session->device_disconnect) {
+-		g_idle_add(disconnect_timeout, session);
++		session->dc_timer = g_idle_add(disconnect_timeout, session);
+ 		return;
+ 	}
+ 
