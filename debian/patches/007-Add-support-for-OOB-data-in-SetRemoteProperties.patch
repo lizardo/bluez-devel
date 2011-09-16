@@ -3,6 +3,9 @@ From: Bartosz Szatkowski <bulislaw@linux.com>
 Date: Mon, 22 Aug 2011 13:39:15 +0200
 Subject: [PATCH 2/3] Add support for OOB data in SetRemoteProperties
 
+NOTE: THIS PATCH HAS TO BE BACKPORTED WITH NEW RELEASE
+(PROBABLY WON'T BE UPSTREAMED)
+
 Now its possible to exchange OOB simple pairing data through DBus API
 method with other device properties.
 ---

@@ -3,6 +3,9 @@ From: Bartosz Szatkowski <bulislaw@linux.com>
 Date: Mon, 22 Aug 2011 13:39:16 +0200
 Subject: [PATCH 3/3] Add support for name in OOB SetRemoteProperties
 
+NOTE: THIS PATCH HAS TO BE BACKPORTED WITH NEW RELEASE
+(PROBABLY WON'T BE UPSTREAMED)
+
 ---
 
 diff --git a/plugins/dbusoob.c b/plugins/dbusoob.c
