@@ -1,3 +1,10 @@
+bluez (4.91-0maemo12) unstable; urgency=low
+
+  * Fixes: NB#244055 - Wrong device type icon displayed in Bluetoth devices
+  list for a headset paired via NFC
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Fri, 16 Sep 2011 14:17:19 +0200
+
 bluez (4.91-0maemo11) unstable; urgency=low
 
   * Fixes: NB#211405 - [BT_Audio][Routing Leak] Noise is heard in IHF
