@@ -1,3 +1,10 @@
+bluez (4.91-0maemo14) unstable; urgency=low
+
+  * Added missing '--enable-dbusoob' option in rules. (Missing part of fix
+    for NB#244055 - OOB-NFC pairing bug). Now dbusoob plugin is enabled.
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Tue, 20 Sep 2011 14:37:29 +0200
+
 bluez (4.91-0maemo13) unstable; urgency=low
 
   * Fixes: NB#281873 - Bluetoothd crash when disconnecting with BMW
