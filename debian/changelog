@@ -1,7 +1,9 @@
 bluez (4.91-0maemo14) unstable; urgency=low
 
-  * Added missing '--enable-dbusoob' option in rules. (Missing part of fix
-    for NB#244055 - OOB-NFC pairing bug). Now dbusoob plugin is enabled.
+  * Fixes: NB#244055 - Wrong device type icon displayed in Bluetoth devices
+  list for a headset paired via NFC.
+  Re-fixed: added missing --enable-dbusoob' option in rules.
+  Now dbusoob plugin is enabled by default and OOB methods are accessible.
 
  -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Tue, 20 Sep 2011 14:37:29 +0200
 
