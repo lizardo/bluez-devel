@@ -1,3 +1,10 @@
+bluez (4.91-0maemo15) unstable; urgency=low
+
+  * Fixes: NB#280833 - Removing paired device still shows lock and if
+  paired again, pairing starts with legacy
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Thu, 22 Sep 2011 16:15:07 +0300
+
 bluez (4.91-0maemo14) unstable; urgency=low
 
   * Fixes: NB#244055 - Wrong device type icon displayed in Bluetoth devices
