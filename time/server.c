@@ -29,13 +29,19 @@
 #include <glib.h>
 #include <time.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <bluetooth/uuid.h>
 #include <adapter.h>
+
+#include "../src/manager.h"
 
 #include "gattrib.h"
 #include "att.h"
 #include "gatt.h"
 #include "att-database.h"
+#include "attio.h"
+#include "textfile.h"
+#include "storage.h"
 #include "attrib-server.h"
 #include "gatt-service.h"
 #include "log.h"
@@ -48,6 +54,21 @@
 #define TIME_UPDATE_CTRL_CHR_UUID	0x2A16
 #define TIME_UPDATE_STAT_CHR_UUID	0x2A17
 #define CT_TIME_CHR_UUID		0x2A2B
+
+struct adapter_ccc {
+	struct btd_adapter *adapter;
+	uint16_t handle;
+};
+
+struct notify_callback {
+	struct btd_device *device;
+	guint id;
+};
+
+static GSList *devices_notify;
+
+static uint16_t current_time_ccc_handle;
+static uint16_t current_time_value_handle;
 
 static int encode_current_time(uint8_t value[10])
 {
@@ -97,6 +118,94 @@ static uint8_t current_time_read(struct attribute *a,
 	return 0;
 }
 
+static void filter_devices_notify(char *key, char *value, void *user_data)
+{
+	struct adapter_ccc *ccc = user_data;
+	struct btd_adapter *adapter = ccc->adapter;
+	struct btd_device *device;
+	char addr[18];
+	uint16_t handle, ccc_val;
+
+	sscanf(key, "%17s#%04hX", addr, &handle);
+
+	if (ccc->handle != handle)
+		return;
+
+	ccc_val = strtol(value, NULL, 16);
+	if (!(ccc_val & 0x0001))
+		return;
+
+	device = adapter_find_device(adapter, addr);
+	if (device == NULL)
+		return;
+
+	if (g_slist_find(devices_notify, device))
+		return;
+
+	devices_notify = g_slist_append(devices_notify, device);
+}
+
+static GSList *devices_to_notify(struct btd_adapter *adapter, uint16_t ccc_hnd)
+{
+	struct adapter_ccc ccc_list = { adapter, ccc_hnd };
+	char filename[PATH_MAX + 1];
+	char srcaddr[18];
+	bdaddr_t src;
+
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "ccc");
+
+	textfile_foreach(filename, filter_devices_notify, &ccc_list);
+
+	return devices_notify;
+}
+
+static void send_notification(GAttrib *attrib, gpointer user_data)
+{
+	struct notify_callback *callback = user_data;
+	uint8_t value[10], pdu[ATT_MAX_MTU];
+	int err, len;
+
+	err = encode_current_time(value);
+	if (err)
+		goto done;
+
+	len = enc_notification(current_time_value_handle, value, sizeof(value),
+							pdu, sizeof(pdu));
+	g_attrib_send(attrib, 0, ATT_OP_HANDLE_NOTIFY, pdu, len,
+							NULL, NULL, NULL);
+
+done:
+	btd_device_remove_attio_callback(callback->device, callback->id);
+	devices_notify = g_slist_remove(devices_notify, callback->device);
+	g_free(callback);
+}
+
+void current_time_updated(void)
+{
+	struct btd_adapter *adapter;
+	GSList *devices, *l;
+
+	adapter = manager_get_default_adapter();
+	if (adapter == NULL)
+		return;
+
+	devices = devices_to_notify(adapter, current_time_ccc_handle);
+
+	for (l = devices; l; l = l->next) {
+		struct btd_device *device = l->data;
+		struct notify_callback *callback;
+
+		callback = g_new0(struct notify_callback, 1);
+		callback->device = device;
+
+		callback->id = btd_device_add_attio_callback(device,
+					send_notification, NULL, callback);
+	}
+}
+
 static uint8_t local_time_info_read(struct attribute *a,
 				struct btd_device *device, gpointer user_data)
 {
@@ -134,7 +243,10 @@ static gboolean register_current_time_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						current_time_read, adapter,
-
+				GATT_OPT_CCC_GET_HANDLE,
+						&current_time_ccc_handle,
+				GATT_OPT_CHR_VALUE_GET_HANDLE,
+						&current_time_value_handle,
 				/* Local Time Information characteristic */
 				GATT_OPT_CHR_UUID, LOCAL_TIME_INFO_CHR_UUID,
 				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
@@ -224,4 +336,6 @@ int time_server_init(void)
 void time_server_exit(void)
 {
 	time_provider_exit();
+
+	g_slist_free(devices_notify);
 }
