@@ -1,3 +1,10 @@
+bluez (4.91-0maemo16) unstable; urgency=low
+
+  * Fixes: NB#285315 - Bluetooth daemon crash when using Codenomicon A2DP
+  robustness tests 
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Thu, 06 Oct 2011 09:09:36 +0200
+
 bluez (4.91-0maemo15) unstable; urgency=low
 
   * Fixes: NB#280833 - Removing paired device still shows lock and if
