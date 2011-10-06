@@ -1,0 +1,24 @@
+From 4cadf1d19804521b5f9335179a15964a0cc05ca5 Mon Sep 17 00:00:00 2001
+From: Johan Hedberg <johan.hedberg@intel.com>
+Date: Wed, 5 Oct 2011 15:28:08 +0300
+Subject: [PATCH] Fix missing initialization of A2DP error
+
+---
+ audio/a2dp.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/audio/a2dp.c b/audio/a2dp.c
+index 09b6572..47be7fd 100644
+--- a/audio/a2dp.c
++++ b/audio/a2dp.c
+@@ -710,6 +710,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
+ 		if (ret == 0)
+ 			return TRUE;
+ 
++		setup->err = g_new(struct avdtp_error, 1);
+ 		avdtp_error_init(setup->err, AVDTP_MEDIA_CODEC,
+ 					AVDTP_UNSUPPORTED_CONFIGURATION);
+ 		break;
+-- 
+1.7.0.4
+
