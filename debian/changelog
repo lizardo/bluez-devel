@@ -1,3 +1,10 @@
+bluez (4.91-0maemo17) unstable; urgency=low
+
+  * Fixes: NB#280899 - when sending dtmf tones through bluetooth very
+  frequently some are lost
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Mon, 10 Oct 2011 11:00:33 +0300
+
 bluez (4.91-0maemo16) unstable; urgency=low
 
   * Fixes: NB#285315 - Bluetooth daemon crash when using Codenomicon A2DP
