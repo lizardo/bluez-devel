@@ -1,0 +1,31 @@
+From 4861017b1ba296b16145b613129d50192ba0331e Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Tue, 27 Sep 2011 13:22:46 +0300
+Subject: [PATCH BlueZ 4/5] Fix play DTMF feeback tones only for active call
+
+Check on active call is added for playing of DTMF feedback tones to
+notify user. Network DTMF tones are handled by modem, and therefore
+there is no need in special check for those.
+---
+ audio/telephony-maemo6.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index 2f8468e..051f82b 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -900,7 +900,10 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
+ 
+ 	start_dtmf(telephony_device, tone);
+ 
+-	start_feedback_tone(tone);
++	if (!find_call_with_status(CSD_CALL_STATUS_ACTIVE))
++		error("No active call");
++	else
++		start_feedback_tone(tone);
+ }
+ 
+ void telephony_subscriber_number_req(void *telephony_device)
+-- 
+1.7.4.1
+
