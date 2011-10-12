@@ -1,3 +1,9 @@
+bluez (4.91-0maemo18) unstable; urgency=low
+
+  * Fixes: NB#284464 - Wrong call waiting code with AT+CLCC -response
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Wed, 12 Oct 2011 11:06:45 +0300
+
 bluez (4.91-0maemo17) unstable; urgency=low
 
   * Fixes: NB#280899 - when sending dtmf tones through bluetooth very
