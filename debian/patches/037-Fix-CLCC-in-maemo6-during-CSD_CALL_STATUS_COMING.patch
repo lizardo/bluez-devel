@@ -1,0 +1,34 @@
+From 36a07747a556cf4fcb5597a0db0632b1bccf8e91 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Wed, 12 Oct 2011 15:06:44 +0300
+Subject: [PATCH BlueZ] Fix +CLCC in maemo6 during CSD_CALL_STATUS_COMING
+
+This fixes the same issue as in 8a6119ea1c685fc61419ee444a5967596f524c1c
+but for CSD_CALL_STATUS_COMING. Call status change sequence in csd is
+IDLE to COMING, COMING to PROCEEDING, and PROCEEDING to WAITING.
+
+Returned 'state of the call' value after CSD_CALL_STATUS_COMING, as well
+as after CSD_CALL_STATUS_PROCEEDING, in +CLCC shall be 5 (waiting, MT
+call) instead of 4 (incoming, MT call) in maemo6 telephony driver for the
+second incoming call.
+---
+ audio/telephony-maemo6.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index 82cb274..40d1bab 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -943,6 +943,9 @@ static int csd_status_to_hfp(struct csd_call *call)
+ 
+ 		return CALL_STATUS_INCOMING;
+ 	case CSD_CALL_STATUS_COMING:
++		if (g_slist_length(active_calls) > 0)
++			return CALL_STATUS_WAITING;
++
+ 		return CALL_STATUS_INCOMING;
+ 	case CSD_CALL_STATUS_MO_ALERTING:
+ 		return CALL_STATUS_ALERTING;
+-- 
+1.7.4.1
+
