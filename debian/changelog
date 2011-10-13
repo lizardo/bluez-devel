@@ -1,3 +1,11 @@
+bluez (4.91-0maemo19) unstable; urgency=low
+
+  * Fixes: NB#286094 - Bluetooth daemon crash when turning bt off during
+  a call
+  * Add patch for NB#284464 that makes the fix for +CLCC complete
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Thu, 13 Oct 2011 15:03:48 +0300
+
 bluez (4.91-0maemo18) unstable; urgency=low
 
   * Fixes: NB#284464 - Wrong call waiting code with AT+CLCC -response
