@@ -1,3 +1,10 @@
+bluez (4.91-0maemo20) unstable; urgency=low
+
+  * Fixes: NB#284923 - Bluetooth is not switched off when activating
+  Flight mode in certain scenario after NFC headset touch
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Wed, 19 Oct 2011 12:59:22 +0300
+
 bluez (4.91-0maemo19) unstable; urgency=low
 
   * Fixes: NB#286094 - Bluetooth daemon crash when turning bt off during
