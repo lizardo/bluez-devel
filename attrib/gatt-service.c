@@ -259,7 +259,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		cfg_val[0] = 0x00;
 		cfg_val[1] = 0x00;
 		a = attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE,
-				ATT_AUTHENTICATION, cfg_val, sizeof(cfg_val));
+				ATT_NONE, cfg_val, sizeof(cfg_val));
 		if (a == NULL)
 			return FALSE;
 
