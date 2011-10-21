@@ -441,8 +441,8 @@ static void filter_devices_notify(char *key, char *value, void *user_data)
 
 	DBG("addr %s handle %#x", addr, handle);
 
-	if (ccc->handle != handle)
-		return;
+	//if (ccc->handle != handle)
+	//	return;
 
 	ccc_val = strtol(value, NULL, 16);
 	if (!(ccc_val & 0x0001))
@@ -470,7 +470,7 @@ static GSList *devices_to_notify(struct btd_adapter *adapter, uint16_t ccc_hnd)
 
 	DBG("srcaddr=%s, ccc_hnd=0x%04x", srcaddr, ccc_hnd);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "configs");
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "ccc");
 
 	textfile_foreach(filename, filter_devices_notify, &ccc_list);
 
