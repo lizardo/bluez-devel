@@ -30,6 +30,7 @@
 #include <gdbus.h>
 #include <errno.h>
 #include <bluetooth/uuid.h>
+#include <stdlib.h>
 
 #include "att.h"
 #include "error.h"
@@ -41,6 +42,9 @@
 #include "attrib-server.h"
 #include "gatt-service.h"
 #include "server.h"
+#include "storage.h"
+#include "attio.h"
+#include "../src/manager.h"
 
 #define PHONE_ALERT_STATUS_SVC_UUID		0x180E
 
@@ -85,6 +89,21 @@ static uint8_t alert_status = 0xff;
 static uint16_t handle_ringer_setting = 0x0000;
 static uint16_t handle_alert_status = 0x0000;
 static struct agent agent;
+
+struct adapter_ccc {
+	struct btd_adapter *adapter;
+	uint16_t handle;
+};
+
+struct notify_callback {
+	struct btd_device *device;
+	guint id;
+};
+
+static GSList *devices_notify;
+
+static uint16_t handle_ringer_setting_ccc;
+static uint16_t handle_alert_status_ccc;
 
 static void agent_operation(const char *operation)
 {
@@ -205,6 +224,7 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 			alert_status_read, NULL,
+			GATT_OPT_CCC_GET_HANDLE, &handle_alert_status_ccc,
 			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_alert_status,
 			/* Ringer Control Point characteristic */
 			GATT_OPT_CHR_UUID, RINGER_CP_CHR_UUID,
@@ -217,6 +237,7 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 			ringer_setting_read, NULL,
+			GATT_OPT_CCC_GET_HANDLE, &handle_ringer_setting_ccc,
 			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_ringer_setting,
 			GATT_OPT_INVALID);
 }
@@ -293,6 +314,97 @@ static DBusMessage *notify_ringer_setting(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static void filter_devices_notify(char *key, char *value, void *user_data)
+{
+	struct adapter_ccc *ccc = user_data;
+	struct btd_adapter *adapter = ccc->adapter;
+	struct btd_device *device;
+	char addr[18];
+	uint16_t handle, ccc_val;
+
+	sscanf(key, "%17s#%04hX", addr, &handle);
+
+	DBG("addr %s handle %#x", addr, handle);
+
+	if (ccc->handle != handle)
+		return;
+
+	ccc_val = strtol(value, NULL, 16);
+	if (!(ccc_val & 0x0001))
+		return;
+
+	device = adapter_find_device(adapter, addr);
+	if (device == NULL)
+		return;
+
+	if (g_slist_find(devices_notify, device))
+		return;
+
+	devices_notify = g_slist_append(devices_notify, device);
+}
+
+static GSList *devices_to_notify(struct btd_adapter *adapter, uint16_t ccc_hnd)
+{
+	struct adapter_ccc ccc_list = { adapter, ccc_hnd };
+	char filename[PATH_MAX + 1];
+	char srcaddr[18];
+	bdaddr_t src;
+
+	adapter_get_address(adapter, &src);
+	ba2str(&src, srcaddr);
+
+	DBG("srcaddr=%s, ccc_hnd=0x%04x", srcaddr, ccc_hnd);
+
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "configs");
+
+	textfile_foreach(filename, filter_devices_notify, &ccc_list);
+
+	return devices_notify;
+}
+
+static void send_notification(GAttrib *attrib, gpointer user_data)
+{
+	struct notify_callback *callback = user_data;
+	uint8_t pdu[ATT_MAX_MTU];
+	int len;
+
+	DBG("");
+
+	len = enc_notification(handle_alert_status, &alert_status,
+					sizeof(alert_status), pdu, sizeof(pdu));
+	g_attrib_send(attrib, 0, ATT_OP_HANDLE_NOTIFY, pdu, len,
+							NULL, NULL, NULL);
+
+	btd_device_remove_attio_callback(callback->device, callback->id);
+	devices_notify = g_slist_remove(devices_notify, callback->device);
+	g_free(callback);
+}
+
+static void alert_status_updated(void)
+{
+	struct btd_adapter *adapter;
+	GSList *devices, *l;
+
+	DBG("");
+
+	adapter = manager_get_default_adapter();
+	if (adapter == NULL)
+		return;
+
+	devices = devices_to_notify(adapter, handle_alert_status_ccc);
+
+	for (l = devices; l; l = l->next) {
+		struct btd_device *device = l->data;
+		struct notify_callback *callback;
+
+		callback = g_new0(struct notify_callback, 1);
+		callback->device = device;
+
+		callback->id = btd_device_add_attio_callback(device,
+					send_notification, NULL, callback);
+	}
+}
+
 static DBusMessage *notify_alert_status(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -306,10 +418,15 @@ static DBusMessage *notify_alert_status(DBusConnection *conn,
 							DBUS_TYPE_INVALID))
 		return NULL;
 
-	alert_status = status;
-
-	attrib_db_update(adapter, handle_alert_status, NULL, &alert_status,
+	if (alert_status != status) {
+		if ((alert_status & 1) != (status & 1)) {
+			alert_status = status;
+			alert_status_updated();
+		}
+		alert_status = status;
+		attrib_db_update(adapter, handle_alert_status, NULL, &alert_status,
 						sizeof(alert_status), NULL);
+	}
 
 	return dbus_message_new_method_return(msg);
 }
