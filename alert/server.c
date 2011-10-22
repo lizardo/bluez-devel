@@ -103,8 +103,8 @@ struct notify_callback {
 
 static GSList *devices_notify;
 
-static uint16_t handle_ringer_setting_ccc;
-static uint16_t handle_alert_status_ccc;
+static uint16_t handle_new_alert;
+static uint16_t handle_new_alert_ccc;
 
 static void agent_operation(const char *operation)
 {
@@ -225,7 +225,6 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 			alert_status_read, NULL,
-			GATT_OPT_CCC_GET_HANDLE, &handle_alert_status_ccc,
 			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_alert_status,
 			/* Ringer Control Point characteristic */
 			GATT_OPT_CHR_UUID, RINGER_CP_CHR_UUID,
@@ -238,7 +237,6 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 			ringer_setting_read, NULL,
-			GATT_OPT_CCC_GET_HANDLE, &handle_ringer_setting_ccc,
 			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_ringer_setting,
 			GATT_OPT_INVALID);
 }
@@ -249,6 +247,8 @@ static uint8_t supp_new_alert_cat_read(struct attribute *a,
 {
 	struct btd_adapter *adapter = user_data;
 	uint8_t value = 1 << 3; /* Call */
+
+	DBG("");
 
 	if (a->data == NULL || a->data[0] != value)
 		attrib_db_update(adapter, a->handle, NULL, &value,
@@ -263,6 +263,8 @@ static uint8_t supp_unread_alert_cat_read(struct attribute *a,
 {
 	struct btd_adapter *adapter = user_data;
 	uint8_t value = 0;
+
+	DBG("");
 
 	if (a->data == NULL || a->data[0] != value)
 		attrib_db_update(adapter, a->handle, NULL, &value,
@@ -298,6 +300,9 @@ static uint8_t alert_notif_cp_write(struct attribute *a,
 		break;
 	case DISABLE_UNREAD_CAT:
 		DBG("DISABLE_UNREAD_CAT: 0x%02x", a->data[1]);
+		if (a->data[1] & (1 << 3)) {
+			DBG("Enabling incoming call notification");
+		}
 		break;
 	case NOTIFY_NEW_INCOMING:
 		DBG("NOTIFY_NEW_INCOMING: 0x%02x", a->data[1]);
@@ -334,6 +339,8 @@ static void register_alert_notif_service(struct btd_adapter *adapter)
 			/* New Alert */
 			GATT_OPT_CHR_UUID, NEW_ALERT_CHR_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_NOTIFY,
+			GATT_OPT_CCC_GET_HANDLE, &handle_new_alert_ccc,
+			GATT_OPT_CHR_VALUE_GET_HANDLE, &handle_new_alert,
 			/* Supported Unread Alert Category */
 			GATT_OPT_CHR_UUID, SUPP_UNREAD_ALERT_CAT_CHR_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
@@ -474,12 +481,20 @@ static void send_notification(GAttrib *attrib, gpointer user_data)
 {
 	struct notify_callback *callback = user_data;
 	uint8_t pdu[ATT_MAX_MTU];
+	static uint8_t new_alert[2];
 	int len;
 
 	DBG("");
-
+#if 0
 	len = enc_notification(handle_alert_status, &alert_status,
 					sizeof(alert_status), pdu, sizeof(pdu));
+	g_attrib_send(attrib, 0, ATT_OP_HANDLE_NOTIFY, pdu, len,
+							NULL, NULL, NULL);
+#endif
+	new_alert[0] = 0x03;
+	new_alert[1] = alert_status & 1;
+	len = enc_notification(handle_new_alert, new_alert,
+					sizeof(new_alert), pdu, sizeof(pdu));
 	g_attrib_send(attrib, 0, ATT_OP_HANDLE_NOTIFY, pdu, len,
 							NULL, NULL, NULL);
 
@@ -499,7 +514,7 @@ static void alert_status_updated(void)
 	if (adapter == NULL)
 		return;
 
-	devices = devices_to_notify(adapter, handle_alert_status_ccc);
+	devices = devices_to_notify(adapter, handle_new_alert_ccc);
 
 	for (l = devices; l; l = l->next) {
 		struct btd_device *device = l->data;
