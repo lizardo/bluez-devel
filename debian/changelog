@@ -1,3 +1,10 @@
+bluez (4.91-0maemo21) unstable; urgency=low
+
+  * Fixes: NB#286938 - Bluetooth, Uninitialised values in bluetoothd
+  when sending DTMF from HS
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Fri, 28 Oct 2011 13:51:04 +0300
+
 bluez (4.91-0maemo20) unstable; urgency=low
 
   * Fixes: NB#284923 - Bluetooth is not switched off when activating
