@@ -1,0 +1,30 @@
+From d8e493835248cabedc513113b735365c06955aa1 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 28 Oct 2011 14:41:50 +0300
+Subject: [PATCH BlueZ] Fix incorrect use of atoi in maemo6
+
+Use of atoi is incorrect and unsafe in maemo6 telephony and replaced
+by g_ascii_digit_value.
+---
+ audio/telephony-maemo6.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/audio/telephony-maemo6.c b/audio/telephony-maemo6.c
+index 5df3235..10967fb 100644
+--- a/audio/telephony-maemo6.c
++++ b/audio/telephony-maemo6.c
+@@ -823,7 +823,10 @@ static int tonegen_startevent(char tone)
+ 		event_tone = DTMF_D;
+ 		break;
+ 	default:
+-		event_tone = atoi(&tone);
++		ret = g_ascii_digit_value(tone);
++		if (ret < 0)
++			return -EINVAL;
++		event_tone = ret;
+ 	}
+ 
+ 	ret = send_method_call(TONEGEN_BUS_NAME, TONEGEN_PATH,
+-- 
+1.7.4.1
+
