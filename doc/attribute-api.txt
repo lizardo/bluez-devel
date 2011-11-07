@@ -111,6 +111,7 @@ Methods		dict GetProperties()
 			this will emit a PropertyChanged signal.
 
 			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported
 
 Properties 	string UUID [readonly]
 
@@ -150,6 +151,13 @@ Properties 	string UUID [readonly]
 
 			Friendly representation of the Characteristic Value
 			based on the format attribute.
+
+		string Config [readwrite]
+
+			Configuration of the characteristic, valid values:
+			"notify", "indicate" or "none". This property is only
+			present if the CCC Descriptor could be found during the
+			discovery of characteristics.
 
 
 Characteristic Watcher hierarchy
