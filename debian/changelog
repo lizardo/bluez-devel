@@ -1,3 +1,10 @@
+bluez (4.91-0maemo22) unstable; urgency=low
+
+  * Fixes: NB#288099 - REG: BH610 fails to connect sometimes, requires
+  reboot 
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Wed, 16 Nov 2011 08:16:27 +0100
+
 bluez (4.91-0maemo21) unstable; urgency=low
 
   * Fixes: NB#286938 - Bluetooth, Uninitialised values in bluetoothd
