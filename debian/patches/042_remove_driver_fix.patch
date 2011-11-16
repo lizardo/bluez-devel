@@ -1,0 +1,113 @@
+From:	Dmitriy Paliy <dmitriy.paliy@gmail.com>
+To:	linux-bluetooth@vger.kernel.org
+Cc:	Daniel Orstadius <daniel.orstadius@nokia.com>
+Subject: [PATCH] Remove driver only if remote has no matching UUID
+Date:	Sun, 13 Nov 2011 20:25:30 +0200
+Message-Id: <1321208730-22957-2-git-send-email-dmitriy.paliy@nokia.com>
+X-Mailer: git-send-email 1.7.4.1
+In-Reply-To: <1321208730-22957-1-git-send-email-dmitriy.paliy@nokia.com>
+References: <1321208730-22957-1-git-send-email-dmitriy.paliy@nokia.com>
+Sender:	linux-bluetooth-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <linux-bluetooth.vger.kernel.org>
+X-Mailing-List:	linux-bluetooth@vger.kernel.org
+
+From: Daniel Orstadius <daniel.orstadius@nokia.com>
+
+Service discovery may generate a list of removed UUIDs. Previously
+BlueZ promptly removed the btd_device_driver mapped to each
+missing UUID.
+
+With this patch it first checks if the remote has any remaining
+UUID mapped to the driver, since each driver is used for several
+UUIDs.
+
+In case the driver is kept, the interface corresponding to the UUID
+will not be removed (the patch deletes too little instead of too
+much).
+---
+ src/device.c |   63 ++++++++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 40 insertions(+), 23 deletions(-)
+
+diff --git a/src/device.c b/src/device.c
+index d624b46..f7bff75 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -1187,29 +1187,6 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
+ 
+ 	records = read_records(&src, &device->bdaddr);
+ 
+-	DBG("Removing drivers for %s", dstaddr);
+-
+-	for (list = device->drivers; list; list = next) {
+-		struct btd_device_driver *driver = list->data;
+-		const char **uuid;
+-
+-		next = list->next;
+-
+-		for (uuid = driver->uuids; *uuid; uuid++) {
+-			if (!g_slist_find_custom(uuids, *uuid,
+-						(GCompareFunc) strcasecmp))
+-				continue;
+-
+-			DBG("UUID %s was removed from device %s",
+-							*uuid, dstaddr);
+-
+-			driver->remove(device);
+-			device->drivers = g_slist_remove(device->drivers,
+-								driver);
+-			break;
+-		}
+-	}
+-
+ 	for (list = uuids; list; list = list->next) {
+ 		sdp_record_t *rec;
+ 
+@@ -1228,6 +1205,46 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
+ 
+ 	if (records)
+ 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
++
++	DBG("Checking if drivers need to be removed for %s", dstaddr);
++
++	for (list = device->drivers; list; list = next) {
++		struct btd_device_driver *driver = list->data;
++		const char **uuid;
++
++		next = list->next;
++
++		for (uuid = driver->uuids; *uuid; uuid++) {
++			const char **uuid2;
++			gboolean found = FALSE;
++
++			if (!g_slist_find_custom(uuids, *uuid,
++						(GCompareFunc) strcasecmp))
++				continue;
++
++			DBG("UUID %s was removed from device %s",
++							*uuid, dstaddr);
++
++			/* check if there is any uuid for the driver
++			on the remote */
++			for (uuid2 = driver->uuids; *uuid2; uuid2++) {
++				if (g_slist_find_custom(device->uuids, *uuid2,
++					       (GCompareFunc) strcasecmp)) {
++					found = TRUE;
++					break;
++				}
++			}
++
++			if (!found) {
++				error("Removing driver for %s", *uuid);
++				driver->remove(device);
++				device->drivers = g_slist_remove(
++						device->drivers, driver);
++			}
++
++			break;
++		}
++	}
+ }
+ 
+ static void services_changed(struct btd_device *device)
+
