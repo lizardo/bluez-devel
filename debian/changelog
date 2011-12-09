@@ -1,3 +1,9 @@
+bluez (4.91-0maemo23) unstable; urgency=low
+
+  * Fixes: NB#294000 - Crash on "audio_device_cancel_authorization" function 
+
+ -- Luis Mendes <ext-luis.1.mendes@nokia.com>  Fri, 09 Dec 2011 16:22:56 +0200
+
 bluez (4.91-0maemo22) unstable; urgency=low
 
   * Fixes: NB#288099 - REG: BH610 fails to connect sometimes, requires
