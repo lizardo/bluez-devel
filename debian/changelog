@@ -1,3 +1,9 @@
+bluez (4.91-0maemo24) unstable; urgency=low
+
+  * Fixes: NB#294854 - Crash on "get_record_cb" function
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Wed, 28 Dec 2011 10:55:29 +0100
+
 bluez (4.91-0maemo23) unstable; urgency=low
 
   * Fixes: NB#294000 - Crash on "audio_device_cancel_authorization" function 
