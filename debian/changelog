@@ -1,3 +1,9 @@
+bluez (4.91-0maemo25) unstable; urgency=low
+
+  * Fixes: NB#289774 - Fast connectable is enabled when connection is active
+
+ -- Dmitriy Paliy <dmitriy.paliy@nokia.com>  Wed, 11 Jan 2012 12:49:52 +0200
+
 bluez (4.91-0maemo24) unstable; urgency=low
 
   * Fixes: NB#294854 - Crash on "get_record_cb" function
