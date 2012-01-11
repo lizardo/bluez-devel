@@ -1,0 +1,37 @@
+From a267bc2dcd37e9c09bc77faf268e7ff4e2e6040e Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 11 Nov 2011 11:11:50 +0200
+Subject: [PATCH BlueZ] Fix enable fast connectable when connection allowed
+
+---
+ audio/manager.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/audio/manager.c b/audio/manager.c
+index 6d294b6..726479e 100644
+--- a/audio/manager.c
++++ b/audio/manager.c
+@@ -1387,7 +1387,7 @@ gboolean manager_allow_headset_connection(struct audio_device *device)
+ 		if (dev == device)
+ 			continue;
+ 
+-		if (bacmp(&dev->src, &device->src))
++		if (device && bacmp(&dev->src, &device->src) != 0)
+ 			continue;
+ 
+ 		if (!hs)
+@@ -1407,6 +1407,11 @@ void manager_set_fast_connectable(gboolean enable)
+ {
+ 	GSList *l;
+ 
++	if (enable && !manager_allow_headset_connection(NULL)) {
++		DBG("Refusing enabling fast connectable");
++		return;
++	}
++
+ 	for (l = adapters; l != NULL; l = l->next) {
+ 		struct audio_adapter *adapter = l->data;
+ 
+-- 
+1.7.5.4
+
