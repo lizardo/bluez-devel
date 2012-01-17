@@ -26,15 +26,50 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
+#include "adapter.h"
+#include "log.h"
 #include "manager.h"
 #include "server.h"
 
+static int time_server_probe(struct btd_adapter *adapter)
+{
+	const char *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	return time_server_register(adapter);
+}
+
+static void time_server_remove(struct btd_adapter *adapter)
+{
+	const char *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+}
+
+struct btd_adapter_driver time_server_driver = {
+	.name = "gatt-time-server",
+	.probe = time_server_probe,
+	.remove = time_server_remove,
+};
+
 int time_manager_init(void)
 {
-	return time_server_init();
+	if (time_server_init() < 0) {
+		error("Could not initialize GATT Time server");
+		return -EIO;
+	}
+
+	btd_register_adapter_driver(&time_server_driver);
+
+	return 0;
 }
 
 void time_manager_exit(void)
 {
+	btd_unregister_adapter_driver(&time_server_driver);
+
 	time_server_exit();
 }

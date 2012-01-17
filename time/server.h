@@ -24,3 +24,5 @@
 
 int time_server_init(void);
 void time_server_exit(void);
+
+int time_server_register(struct btd_adapter *adapter);
