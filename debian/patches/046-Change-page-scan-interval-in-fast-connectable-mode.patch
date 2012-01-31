@@ -1,0 +1,33 @@
+From faa542f95470521d4373da2ca5d8173fad026e34 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 13 Jan 2012 11:55:33 +0200
+Subject: [PATCH 1/5] Change page scan interval in fast connectable mode
+
+Page scan interval in fast connectable mode is changed from 22.5 msec to
+160 msec to perform less aggressive page scanning. This is done
+accordingly to controller vendor recommendation.
+
+Primary concern is that current parameters 22.5 interval, 11.25 window, and
+interleaved scanning occupy whole radio bandwidth. Changing interval to 160
+msec should be sufficient for both speeding up connection establishment and
+leaving space for other activities, like inquiry scan, e.g.
+---
+ plugins/hciops.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/plugins/hciops.c b/plugins/hciops.c
+index d42e7de..bc38c9b 100644
+--- a/plugins/hciops.c
++++ b/plugins/hciops.c
+@@ -3141,7 +3141,7 @@ static int hciops_fast_connectable(int index, gboolean enable)
+ 
+ 	if (enable) {
+ 		type = PAGE_SCAN_TYPE_INTERLACED;
+-		cp.interval = 0x0024;	/* 22.5 msec page scan interval */
++		cp.interval = 0x0100;	/* 160 msec page scan interval */
+ 	} else {
+ 		type = PAGE_SCAN_TYPE_STANDARD;	/* default */
+ 		cp.interval = 0x0800;	/* default 1.28 sec page scan */
+-- 
+1.7.4.1
+

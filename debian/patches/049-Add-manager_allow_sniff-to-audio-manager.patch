@@ -1,0 +1,48 @@
+From cba1ceeef5fb18f94765b61d245b65bdf7c17e6c Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 20 Jan 2012 17:58:47 +0200
+Subject: [PATCH 4/5] Add manager_allow_sniff to audio manager
+
+This patch enables controlling permission to enter into sniff mode,
+or to leave it, from audio manager through adapter's API.
+---
+ audio/manager.c |   15 +++++++++++++++
+ audio/manager.h |    2 ++
+ 2 files changed, 17 insertions(+), 0 deletions(-)
+
+diff --git a/audio/manager.c b/audio/manager.c
+index 0b52520..33137ce 100644
+--- a/audio/manager.c
++++ b/audio/manager.c
+@@ -1418,3 +1418,18 @@ void manager_set_fast_connectable(gboolean enable)
+ 				adapter_get_dev_id(adapter->btd_adapter));
+ 	}
+ }
++
++void manager_allow_sniff(struct audio_device *dev, gboolean enable)
++{
++	struct btd_adapter *adapter;
++
++	adapter = manager_find_adapter(&dev->src);
++	if (!adapter)
++		return;
++
++	DBG("change link policy for hci%d", adapter_get_dev_id(adapter));
++
++	if (btd_adapter_allow_sniff(adapter, &dev->dst, enable))
++		error("Changing link policy for hci%d failed",
++				adapter_get_dev_id(adapter));
++}
+diff --git a/audio/manager.h b/audio/manager.h
+index 0bf7663..cd1c86d 100644
+--- a/audio/manager.h
++++ b/audio/manager.h
+@@ -54,3 +54,5 @@ gboolean manager_allow_headset_connection(struct audio_device *device);
+ /* TRUE to enable fast connectable and FALSE to disable fast connectable for all
+  * audio adapters. */
+ void manager_set_fast_connectable(gboolean enable);
++
++void manager_allow_sniff(struct audio_device *dev, gboolean enable);
+-- 
+1.7.4.1
+

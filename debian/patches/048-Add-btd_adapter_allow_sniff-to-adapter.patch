@@ -1,0 +1,48 @@
+From 63114ae03080665d288534ef393532a8f8ff5de3 Mon Sep 17 00:00:00 2001
+From: Dmitriy Paliy <dmitriy.paliy@nokia.com>
+Date: Fri, 20 Jan 2012 16:50:19 +0200
+Subject: [PATCH 3/5] Add btd_adapter_allow_sniff to adapter
+
+This makes hciops_allow_sniff exposed as adapter's API.
+---
+ src/adapter.c |   15 +++++++++++++++
+ src/adapter.h |    3 +++
+ 2 files changed, 18 insertions(+), 0 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index cf21ab4..27b6a77 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -3785,3 +3785,18 @@ int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
+ {
+ 	return adapter_ops->remove_remote_oob_data(adapter->dev_id, bdaddr);
+ }
++
++int btd_adapter_allow_sniff(struct btd_adapter *adapter, bdaddr_t *bdaddr,
++							gboolean enable)
++{
++	if (!adapter_ops)
++		return -EINVAL;
++
++	if (!adapter->up)
++		return -EINVAL;
++
++	if (!adapter_ops->allow_sniff)
++		return -EINVAL;
++
++	return adapter_ops->allow_sniff(adapter->dev_id, bdaddr, enable);
++}
+diff --git a/src/adapter.h b/src/adapter.h
+index 6e57d17..066f36e 100644
+--- a/src/adapter.h
++++ b/src/adapter.h
+@@ -301,3 +301,6 @@ int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
+ 
+ int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
+ 							bdaddr_t *bdaddr);
++
++int btd_adapter_allow_sniff(struct btd_adapter *adapter, bdaddr_t *bdaddr,
++							gboolean enable);
+-- 
+1.7.4.1
+
