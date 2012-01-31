@@ -179,8 +179,9 @@ static uint8_t alert_status_read(struct attribute *a,
 {
 	struct btd_adapter *adapter = user_data;
 
-	if (alert_status == 0xff)
-		return ATT_ECODE_IO;
+	alert_status = 0x00;
+	//if (alert_status == 0xff)
+	//	return ATT_ECODE_IO;
 
 	DBG("a = %p, state = %s", a,
 		alert_status & ALERT_RINGER_STATE ? "Active": "Not Active");
