@@ -1,3 +1,9 @@
+bluez (4.91-0maemo26) unstable; urgency=low
+
+  * Fixes: NB#288216 - REG: BH220 fails to connect sometimes, requires BT reset 
+
+ -- Radoslaw Jablonski <ext-jablonski.radoslaw@nokia.com>  Tue, 31 Jan 2012 13:53:06 +0100
+
 bluez (4.91-0maemo25) unstable; urgency=low
 
   * Fixes: NB#289774 - Fast connectable is enabled when connection is active
