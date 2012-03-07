@@ -159,6 +159,14 @@ Properties 	string UUID [readonly]
 			present if the CCC Descriptor could be found during the
 			discovery of characteristics.
 
+			Note that this property is only writable after
+			characteristic descriptor discovery finishes. This may
+			happen after DiscoverCharacteristics() returns,
+			therefore PropertyChanged signal should be monitored to
+			know when it is available for write (characteristic
+			descriptor discovery also reads the CCC and thus this
+			signal is emitted).
+
 
 Characteristic Watcher hierarchy
 ===============================

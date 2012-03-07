@@ -877,6 +877,7 @@ static void update_char_config(guint8 status, const guint8 *pdu, guint16 len,
 	struct query_data *current = user_data;
 	struct gatt_service *gatt = current->gatt;
 	struct characteristic *chr = current->chr;
+	const char *str = config2str(chr->ccc);
 	uint8_t value[2];
 
 	if (status != 0)
@@ -891,6 +892,9 @@ static void update_char_config(guint8 status, const guint8 *pdu, guint16 len,
 
 	store_attribute(gatt, current->handle, GATT_CLIENT_CHARAC_CFG_UUID,
 							value, sizeof(value));
+
+	emit_property_changed(gatt->conn, chr->path, CHAR_INTERFACE, "Config",
+							DBUS_TYPE_STRING, &str);
 
 done:
 	query_list_remove(gatt, current);
