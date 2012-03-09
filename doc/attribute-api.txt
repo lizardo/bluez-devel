@@ -155,9 +155,9 @@ Properties 	string UUID [readonly]
 		string Config [readwrite]
 
 			Configuration of the characteristic, valid values:
-			"notify", "indicate" or "none". This property is only
-			present if the CCC Descriptor could be found during the
-			discovery of characteristics.
+			"notify", "indicate", "notify|indicate" or "none". This
+			property is only present if the CCC Descriptor could be
+			found during the discovery of characteristics.
 
 			Note that this property is only writable after
 			characteristic descriptor discovery finishes. This may

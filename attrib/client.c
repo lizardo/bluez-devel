@@ -199,6 +199,8 @@ static const char *config2str(uint16_t ccc)
 		return "notify";
 	case ATT_CLIENT_CHAR_CONF_INDICATION:
 		return "indicate";
+	case ATT_CLIENT_CHAR_CONF_NOTIFICATION | ATT_CLIENT_CHAR_CONF_INDICATION:
+		return "notify|indicate";
 	default:
 		return "none";
 	}
@@ -504,6 +506,9 @@ static DBusMessage *set_config_char(DBusConnection *conn, DBusMessage *msg,
 		chr->ccc = ATT_CLIENT_CHAR_CONF_NOTIFICATION;
 	else if (g_str_equal(str, "indicate"))
 		chr->ccc = ATT_CLIENT_CHAR_CONF_INDICATION;
+	else if (g_str_equal(str, "notify|indicate"))
+		chr->ccc = ATT_CLIENT_CHAR_CONF_NOTIFICATION |
+						ATT_CLIENT_CHAR_CONF_INDICATION;
 	else if (g_str_equal(str, "none"))
 		chr->ccc = 0;
 	else
