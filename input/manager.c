@@ -202,7 +202,7 @@ static int hog_device_probe(struct btd_device *device, GSList *uuids)
 
 	DBG("path %s", path);
 
-	return 0;
+	return hog_device_register(device, path);
 }
 
 static void hog_device_remove(struct btd_device *device)
@@ -210,6 +210,8 @@ static void hog_device_remove(struct btd_device *device)
 	const gchar *path = device_get_path(device);
 
 	DBG("path %s", path);
+
+	hog_device_unregister(path);
 }
 
 static struct btd_device_driver hog_driver = {
