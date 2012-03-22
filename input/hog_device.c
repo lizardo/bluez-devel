@@ -71,9 +71,27 @@ static void report_free(struct report *report)
 	g_free(report);
 }
 
+static void report_value_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	uint16_t handle;
+
+	if (len < 3) {
+		error("Malformed ATT notification");
+		return;
+	}
+
+	handle = att_get_u16(&pdu[1]);
+
+	DBG("Report(0x%04x): 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x "
+				"0x%02x", handle, pdu[2], pdu[3], pdu[4],
+				pdu[5], pdu[6], pdu[7], pdu[8], pdu[9]);
+}
+
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
+	struct hog_device *hogdev = user_data;
+
 	if (status != 0) {
 		error("Write report characteristic descriptor failed: %s",
 							att_ecode2str(status));
@@ -81,6 +99,9 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 	}
 
 	DBG("Report characteristic descriptor written: notification enabled");
+
+	g_attrib_register(hogdev->attrib, ATT_OP_HANDLE_NOTIFY, report_value_cb,
+								hogdev, NULL);
 }
 
 static void write_ccc(uint16_t handle, gpointer user_data)
