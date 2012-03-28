@@ -69,6 +69,7 @@ struct hog_device {
 	GSList			*reports;
 	int			uhid_fd;
 	gboolean		prepend_id;
+	guint			uhid_watch_id;
 };
 
 struct report {
@@ -328,10 +329,65 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 	}
 }
 
+static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct hog_device *hogdev = user_data;
+	struct uhid_event ev;
+	ssize_t bread;
+	int fd;
+
+	DBG("UHID event");
+
+	if (cond & (G_IO_ERR | G_IO_NVAL))
+		goto failed;
+
+	fd = g_io_channel_unix_get_fd(io);
+	memset(&ev, 0, sizeof(ev));
+
+	bread = read(fd, &ev, sizeof(ev));
+	if (bread < 0) {
+		int err = errno;
+		DBG("uhid-dev read: %s(%d)", strerror(err), err);
+		goto failed;
+	}
+
+	switch (ev.type) {
+	case UHID_START:
+		DBG("UHID_START from uhid-dev");
+		break;
+	case UHID_STOP:
+		DBG("UHID_STOP from uhid-dev");
+		break;
+	case UHID_OPEN:
+		DBG("UHID_OPEN from uhid-dev");
+		break;
+	case UHID_CLOSE:
+		DBG("UHID_CLOSE from uhid-dev");
+		break;
+	case UHID_OUTPUT:
+		DBG("UHID_OUTPUT from uhid-dev");
+		break;
+	case UHID_OUTPUT_EV:
+		DBG("UHID_OUTPUT_EV from uhid-dev");
+		break;
+	default:
+		DBG("Invalid event from uhid-dev: %u", ev.type);
+	}
+
+	return TRUE;
+
+failed:
+	hogdev->uhid_watch_id = 0;
+	return FALSE;
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct gatt_primary *prim = hogdev->hog_primary;
+	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
+	GIOChannel *io;
 
 	hogdev->attrib = g_attrib_ref(attrib);
 
@@ -348,6 +404,12 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
 					ATT_OP_HANDLE_NOTIFY, report_value_cb,
 					hogdev, NULL);
+
+	io = g_io_channel_unix_new(hogdev->uhid_fd);
+	g_io_channel_set_encoding(io, NULL, NULL);
+	hogdev->uhid_watch_id = g_io_add_watch(io, cond, uhid_event_cb,
+								hogdev);
+	g_io_channel_unref(io);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
@@ -359,6 +421,9 @@ static void attio_disconnected_cb(gpointer user_data)
 	ev.type = UHID_DESTROY;
 	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
 		error("Failed to destroy UHID device: %s", strerror(errno));
+
+	g_source_remove(hogdev->uhid_watch_id);
+	hogdev->uhid_watch_id = 0;
 
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
