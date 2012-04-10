@@ -44,6 +44,7 @@
 #define GATT_CHARAC_FMT_UUID		0x2904
 #define GATT_CHARAC_AGREG_FMT_UUID	0x2905
 #define GATT_CHARAC_VALID_RANGE_UUID	0x2906
+#define GATT_REPORT_REFERENCE		0x2908
 
 /* Attribute Protocol Opcodes */
 #define ATT_OP_ERROR			0x01
