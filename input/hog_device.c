@@ -68,6 +68,7 @@ struct hog_device {
 	struct btd_device	*device;
 	GAttrib			*attrib;
 	guint			attioid;
+	guint			report_cb_id;
 	struct gatt_primary	*hog_primary;
 	GSList			*reports;
 	int			uhid_fd;
@@ -111,8 +112,6 @@ static void report_value_cb(const uint8_t *pdu, uint16_t len, gpointer user_data
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
-	struct hog_device *hogdev = user_data;
-
 	if (status != 0) {
 		error("Write report characteristic descriptor failed: %s",
 							att_ecode2str(status));
@@ -120,9 +119,6 @@ static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 	}
 
 	DBG("Report characteristic descriptor written: notification enabled");
-
-	g_attrib_register(hogdev->attrib, ATT_OP_HANDLE_NOTIFY, report_value_cb,
-								hogdev, NULL);
 }
 
 static void write_ccc(uint16_t handle, gpointer user_data)
@@ -309,8 +305,14 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 		return;
 
 	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
-	if (hogdev->uhid_fd < 0)
+	if (hogdev->uhid_fd < 0) {
 		error("Failed to open UHID device: %s", strerror(errno));
+		return;
+	}
+
+	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
+					ATT_OP_HANDLE_NOTIFY, report_value_cb,
+					hogdev, NULL);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
@@ -325,6 +327,9 @@ static void attio_disconnected_cb(gpointer user_data)
 
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
+
+	g_attrib_unregister(hogdev->attrib, hogdev->report_cb_id);
+	hogdev->report_cb_id = 0;
 
 	g_attrib_unref(hogdev->attrib);
 	hogdev->attrib = NULL;
