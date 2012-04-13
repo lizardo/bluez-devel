@@ -225,6 +225,7 @@ builtin_sources += thermometer/main.c \
 			thermometer/manager.h thermometer/manager.c \
 			thermometer/thermometer.h thermometer/thermometer.c \
 			alert/main.c alert/server.h alert/server.c \
+			alert/manager.h alert/manager.c \
 			time/main.c time/server.h time/server.c \
 			plugins/gatt-example.c \
 			proximity/main.c proximity/manager.h proximity/manager.c \
