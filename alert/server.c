@@ -26,13 +26,32 @@
 #include <config.h>
 #endif
 
+#include "adapter.h"
 #include "server.h"
+
+static int alert_server_probe(struct btd_adapter *adapter)
+{
+	return 0;
+}
+
+static void alert_server_remove(struct btd_adapter *adapter)
+{
+}
+
+struct btd_adapter_driver alert_server_driver = {
+	.name = "gatt-alert-server",
+	.probe = alert_server_probe,
+	.remove = alert_server_remove,
+};
 
 int alert_server_init(void)
 {
+	btd_register_adapter_driver(&alert_server_driver);
+
 	return 0;
 }
 
 void alert_server_exit(void)
 {
+	btd_unregister_adapter_driver(&alert_server_driver);
 }
