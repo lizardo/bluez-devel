@@ -197,6 +197,13 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
+		void UpdateBroadcastData(dict values)
+
+			Replace Advertising data for broadcast. This method can
+			only be called after RegisterBroadcaster().
+
+			Possible errors: org.bluez.Error.Failed
+
 		void UnregisterBroadcaster()
 
 			This method will release any previously set Advertising
