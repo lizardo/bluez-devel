@@ -329,6 +329,45 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 	}
 }
 
+static void output_written_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	if (status != 0) {
+		error("Write output report failed: %s", att_ecode2str(status));
+		return;
+	}
+}
+
+static gint report_type_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct report *report = a;
+	uint8_t type = GPOINTER_TO_UINT(b);
+
+	return report->type - type;
+}
+
+static void forward_output(struct hog_device *hogdev,
+						struct uhid_event *ev)
+{
+	struct report *report;
+	GSList *l;
+
+	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(ev->type),
+							report_type_cmp);
+	if (!l)
+		return;
+
+	report = l->data;
+
+	if (report->decl->properties & ATT_CHAR_PROPER_WRITE)
+		gatt_write_char(hogdev->attrib, report->decl->value_handle,
+					ev->u.output.data, ev->u.output.size,
+					output_written_cb, hogdev);
+	else if (ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)
+		gatt_write_char(hogdev->attrib, report->decl->value_handle,
+				ev->u.output.data, ev->u.output.size, NULL, NULL);
+}
+
 static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -367,6 +406,7 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 		break;
 	case UHID_OUTPUT:
 		DBG("UHID_OUTPUT from uhid-dev");
+		forward_output(hogdev, &ev);
 		break;
 	case UHID_OUTPUT_EV:
 		DBG("UHID_OUTPUT_EV from uhid-dev");
