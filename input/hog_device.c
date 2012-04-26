@@ -351,6 +351,8 @@ static void forward_output(struct hog_device *hogdev,
 {
 	struct report *report;
 	GSList *l;
+	void *data;
+	int size;
 
 	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(ev->type),
 							report_type_cmp);
@@ -359,13 +361,20 @@ static void forward_output(struct hog_device *hogdev,
 
 	report = l->data;
 
+	if (ev->type == UHID_OUTPUT) {
+		data = ev->u.output.data;
+		size = ev->u.output.size;
+	} else {
+		data = &ev->u.output_ev.value;
+		size = sizeof(ev->u.output_ev.value);
+	}
+
 	if (report->decl->properties & ATT_CHAR_PROPER_WRITE)
 		gatt_write_char(hogdev->attrib, report->decl->value_handle,
-					ev->u.output.data, ev->u.output.size,
-					output_written_cb, hogdev);
+				data, size, output_written_cb, hogdev);
 	else if (ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)
 		gatt_write_char(hogdev->attrib, report->decl->value_handle,
-				ev->u.output.data, ev->u.output.size, NULL, NULL);
+						data, size, NULL, NULL);
 }
 
 static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
@@ -410,6 +419,7 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 		break;
 	case UHID_OUTPUT_EV:
 		DBG("UHID_OUTPUT_EV from uhid-dev");
+		forward_output(hogdev, &ev);
 		break;
 	default:
 		DBG("Invalid event from uhid-dev: %u", ev.type);
