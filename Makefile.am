@@ -239,7 +239,9 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/deviceinfo/manager.c \
 			profiles/deviceinfo/deviceinfo.h \
 			profiles/deviceinfo/deviceinfo.c \
-			profiles/scanparam/main.c
+			profiles/scanparam/main.c \
+			profiles/scanparam/manager.h \
+			profiles/scanparam/manager.c
 endif
 
 builtin_modules += formfactor
