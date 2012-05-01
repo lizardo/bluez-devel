@@ -26,30 +26,40 @@
 #include <config.h>
 #endif
 
-#include <errno.h>
-#include <stdint.h>
 #include <glib.h>
 
 #include "log.h"
-#include "plugin.h"
-#include "hcid.h"
+#include "adapter.h"
+#include "device.h"
 #include "manager.h"
 
-static int scan_param_init(void)
-{
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
+#define SCAN_PARAMETERS_UUID	"00001813-0000-1000-8000-00805f9b34fb"
 
-	return scan_param_manager_init();
+static int scan_param_probe(struct btd_device *device, GSList *uuids)
+{
+	DBG("Probing Scan Parameters");
+
+	return 0;
 }
 
-static void scan_param_exit(void)
+static void scan_param_remove(struct btd_device *device)
 {
-	scan_param_manager_exit();
 }
 
-BLUETOOTH_PLUGIN_DEFINE(scanparam, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-			scan_param_init, scan_param_exit)
+static struct btd_device_driver scan_driver = {
+	.name = "Scan Parameters Client Driver",
+	.uuids = BTD_UUIDS(SCAN_PARAMETERS_UUID),
+	.probe = scan_param_probe,
+	.remove = scan_param_remove,
+};
+
+int scan_param_manager_init(void)
+{
+	return btd_register_device_driver(&scan_driver);
+
+}
+
+void scan_param_manager_exit(void)
+{
+	btd_unregister_device_driver(&scan_driver);
+}
