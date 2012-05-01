@@ -51,8 +51,10 @@
 #include "attio.h"
 #include "gatt.h"
 
+#define HOG_INFO_UUID		0x2A4A
 #define HOG_REPORT_MAP_UUID	0x2A4B
 #define HOG_REPORT_UUID		0x2A4D
+
 #define UHID_DEVICE_FILE	"/dev/uhid"
 
 #ifndef MIN
@@ -70,6 +72,9 @@ struct hog_device {
 	int			uhid_fd;
 	gboolean		prepend_id;
 	guint			uhid_watch_id;
+	uint16_t		bcdhid;
+	uint8_t			bcountrycode;
+	uint8_t			flags;
 };
 
 struct report {
@@ -288,10 +293,36 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		error("Failed to create UHID device: %s", strerror(errno));
 }
 
+static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct hog_device *hogdev = user_data;
+	uint8_t value[ATT_MAX_MTU];
+	int vlen;
+
+	if (status != 0) {
+		error("HID Information read failed: %s",
+						att_ecode2str(status));
+		return;
+	}
+
+	if (plen != 5 || !dec_read_resp(pdu, plen, value, &vlen)) {
+		error("ATT protocol error");
+		return;
+	}
+
+	hogdev->bcdhid = att_get_u16(&pdu[1]);
+	hogdev->bcountrycode = pdu[3];
+	hogdev->flags = pdu[4];
+
+	DBG("bcdHID: 0x%04X bCountryCode: 0x%02X Flags: 0x%02X",
+			hogdev->bcdhid, hogdev->bcountrycode, hogdev->flags);
+}
+
 static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
-	bt_uuid_t report_uuid, report_map_uuid;
+	bt_uuid_t report_uuid, report_map_uuid, info_uuid;
 	struct report *report;
 	GSList *l;
 
@@ -303,6 +334,7 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 
 	bt_uuid16_create(&report_uuid, HOG_REPORT_UUID);
 	bt_uuid16_create(&report_map_uuid, HOG_REPORT_MAP_UUID);
+	bt_uuid16_create(&info_uuid, HOG_INFO_UUID);
 
 	for (l = chars; l; l = g_slist_next(l)) {
 		struct gatt_char *chr, *next;
@@ -326,6 +358,9 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 		} else if (bt_uuid_cmp(&uuid, &report_map_uuid) == 0)
 			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
 						report_map_read_cb, hogdev);
+		else if (bt_uuid_cmp(&uuid, &info_uuid) == 0)
+			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
+						info_read_cb, hogdev);
 	}
 }
 
