@@ -240,7 +240,7 @@ builtin_sources += thermometer/main.c \
 			deviceinfo/main.c \
 			deviceinfo/manager.h deviceinfo/manager.c \
 			deviceinfo/deviceinfo.h deviceinfo/deviceinfo.c \
-			scanparam/main.c
+			scanparam/main.c scanparam/manager.h scanparam/manager.c
 endif
 
 
