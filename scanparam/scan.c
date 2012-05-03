@@ -51,6 +51,7 @@ struct scan {
 	guint attioid;
 	uint16_t interval;
 	uint16_t window;
+	uint16_t iwhandle;
 	uint16_t refresh_handle;
 	uint16_t refresh_cb_id;
 };
@@ -66,6 +67,16 @@ static gint scan_device_cmp(gconstpointer a, gconstpointer b)
 		return 0;
 
 	return -1;
+}
+
+static void write_scan_params(GAttrib *attrib, uint16_t handle)
+{
+	uint8_t value[4];
+
+	att_put_u16(SCAN_INTERVAL, &value[0]);
+	att_put_u16(SCAN_WINDOW, &value[2]);
+
+	gatt_write_char(attrib, handle, value, sizeof(value), NULL, NULL);
 }
 
 static void refresh_value_cb(const uint8_t *pdu, uint16_t len,
@@ -85,6 +96,9 @@ static void refresh_value_cb(const uint8_t *pdu, uint16_t len,
 		return;
 
 	DBG("Server requires refresh: %d", pdu[3]);
+
+	if (pdu[3] == 1)
+		write_scan_params(scan->attrib, scan->iwhandle);
 }
 
 static void ccc_written_cb(guint8 status, const guint8 *pdu,
@@ -173,7 +187,6 @@ static void iwin_discovered_cb(GSList *chars, guint8 status,
 {
 	struct scan *scan = user_data;
 	struct gatt_char *chr;
-	uint8_t value[4];
 
 	if (status) {
 		error("Discover Scan Interval Window: %s",
@@ -182,15 +195,11 @@ static void iwin_discovered_cb(GSList *chars, guint8 status,
 	}
 
 	chr = chars->data;
+	scan->iwhandle = chr->value_handle;
 
-	DBG("Scan Interval Window handle: 0x%04x",
-						chr->value_handle);
+	DBG("Scan Interval Window handle: 0x%04x", scan->iwhandle);
 
-	att_put_u16(SCAN_INTERVAL, &value[0]);
-	att_put_u16(SCAN_WINDOW, &value[2]);
-
-	gatt_write_char(scan->attrib, chr->value_handle, value,
-						sizeof(value), NULL, NULL);
+	write_scan_params(scan->attrib, scan->iwhandle);
 }
 
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
