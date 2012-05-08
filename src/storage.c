@@ -1262,9 +1262,10 @@ char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 }
 
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
-					uint16_t handle, const char *chars)
+					uint8_t bdaddr_type, uint16_t handle,
+							      const char *chars)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], addr[18], key[25];
 
 	create_filename(filename, PATH_MAX, sba, "characteristic");
 
@@ -1272,20 +1273,29 @@ int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 
 	ba2str(dba, addr);
 
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	snprintf(key, sizeof(key), "%17s#%c#%04X", addr,
+			ba_type2char(bdaddr_type), handle);
 
 	return textfile_put(filename, key, chars);
 }
 
 char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
-							uint16_t handle)
+					uint8_t bdaddr_type, uint16_t handle)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], *str, addr[18], key[25];
 
 	create_filename(filename, PATH_MAX, sba, "characteristic");
 
 	ba2str(dba, addr);
 
+	snprintf(key, sizeof(key), "%17s#%c#%04X", addr,
+			ba_type2char(bdaddr_type), handle);
+
+	str = textfile_caseget(filename, key);
+	if (str != NULL)
+		return str;
+
+	/* Try old format (address only) */
 	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
 
 	return textfile_caseget(filename, key);
