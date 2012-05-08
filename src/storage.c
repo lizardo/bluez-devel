@@ -294,19 +294,31 @@ int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 	return 0;
 }
 
-int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
+int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 							uint16_t *appearance)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 
 	create_filename(filename, PATH_MAX, local, "appearance");
 
-	ba2str(peer, addr);
+	memset(key, 0, sizeof(key));
 
-	str = textfile_get(filename, addr);
+	ba2str(peer, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
+
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	str = textfile_get(filename, key);
 	if (!str)
 		return -ENOENT;
 
+done:
 	if (sscanf(str, "%hx", appearance) != 1) {
 		free(str);
 		return -ENOENT;
@@ -318,18 +330,23 @@ int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
 }
 
 int write_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
-							uint16_t appearance)
+				uint8_t bdaddr_type, uint16_t appearance)
 {
-	char filename[PATH_MAX + 1], addr[18], str[7];
+	char filename[PATH_MAX + 1], key[20], str[7];
 
 	create_filename(filename, PATH_MAX, local, "appearance");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
+	memset(key, 0, sizeof(key));
+
+	ba2str(peer, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
+
 	sprintf(str, "0x%4.4x", appearance);
 
-	return textfile_put(filename, addr, str);
+	return textfile_put(filename, key, str);
 }
 
 int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
