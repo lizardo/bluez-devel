@@ -61,6 +61,19 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
+static inline char ba_type2char(uint8_t bdaddr_type)
+{
+	switch (bdaddr_type) {
+	case BDADDR_LE_PUBLIC:
+		return '1';
+	case BDADDR_LE_RANDOM:
+		return '2';
+	case BDADDR_BREDR:
+	default:
+		return '0';
+	}
+}
+
 int read_device_alias(const char *src, const char *dst, char *alias, size_t size)
 {
 	char filename[PATH_MAX + 1], *tmp;
@@ -1162,15 +1175,19 @@ int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
 }
 
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
-							const char *services)
+			  uint8_t bdaddr_type, const char *services)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], addr[20];
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dba, addr);
+	addr[17] = '#';
+	addr[18] = ba_type2char(bdaddr_type);
+
+	addr[19] = '\0';
 
 	return textfile_put(filename, addr, services);
 }
@@ -1228,13 +1245,18 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 	return textfile_del(filename, address);
 }
 
-char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba)
+char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
+							uint8_t bdaddr_type)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], addr[20];
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
 	ba2str(dba, addr);
+	addr[17] = '#';
+	addr[18] = ba_type2char(bdaddr_type);
+
+	addr[19] = '\0';
 
 	return textfile_caseget(filename, addr);
 }
