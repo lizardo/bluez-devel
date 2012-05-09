@@ -1343,10 +1343,10 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
 	return textfile_foreach(filename, func, data);
 }
 
-int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t *value)
+int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t *value)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], addr[18], key[25];
 	char *str;
 	unsigned int config;
 	int err = 0;
@@ -1354,7 +1354,9 @@ int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 	create_filename(filename, PATH_MAX, local, "ccc");
 
 	ba2str(peer, addr);
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+
+	snprintf(key, sizeof(key), "%17s#%c#%04X", addr,
+			ba_type2char(bdaddr_type), handle);
 
 	str = textfile_caseget(filename, key);
 	if (str == NULL)
@@ -1370,10 +1372,10 @@ int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 	return err;
 }
 
-int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t value)
+int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t value)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23], config[5];
+	char filename[PATH_MAX + 1], addr[18], key[25], config[5];
 
 	create_filename(filename, PATH_MAX, local, "ccc");
 
@@ -1381,7 +1383,9 @@ int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 
 	ba2str(peer, addr);
 
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	snprintf(key, sizeof(key), "%17s#%c#%04X", addr,
+			ba_type2char(bdaddr_type), handle);
+
 	snprintf(config, sizeof(config), "%04X", value);
 
 	return textfile_put(filename, key, config);
