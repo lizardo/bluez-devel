@@ -478,30 +478,16 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct gatt_primary *prim = hogdev->hog_primary;
-	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
-	GIOChannel *io;
 
 	hogdev->attrib = g_attrib_ref(attrib);
 
 	gatt_discover_char(hogdev->attrib, prim->range.start, prim->range.end,
 					NULL, char_discovered_cb, hogdev);
 
-	if (hogdev->uhid_fd > 0)
-		return;
-
-	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
-	if (hogdev->uhid_fd < 0)
-		error("Failed to open UHID device: %s", strerror(errno));
-
 	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
 					ATT_OP_HANDLE_NOTIFY, report_value_cb,
 					hogdev, NULL);
 
-	io = g_io_channel_unix_new(hogdev->uhid_fd);
-	g_io_channel_set_encoding(io, NULL, NULL);
-	hogdev->uhid_watch_id = g_io_add_watch(io, cond, uhid_event_cb,
-								hogdev);
-	g_io_channel_unref(io);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
@@ -513,12 +499,6 @@ static void attio_disconnected_cb(gpointer user_data)
 	ev.type = UHID_DESTROY;
 	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
 		error("Failed to destroy UHID device: %s", strerror(errno));
-
-	g_source_remove(hogdev->uhid_watch_id);
-	hogdev->uhid_watch_id = 0;
-
-	close(hogdev->uhid_fd);
-	hogdev->uhid_fd = -1;
 
 	g_attrib_unregister(hogdev->attrib, hogdev->report_cb_id);
 	hogdev->report_cb_id = 0;
@@ -577,6 +557,8 @@ int hog_device_register(struct btd_device *device, const char *path)
 {
 	struct hog_device *hogdev;
 	struct gatt_primary *prim;
+	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
+	GIOChannel *io;
 
 	hogdev = find_device_by_path(devices, path);
 	if (hogdev)
@@ -589,6 +571,19 @@ int hog_device_register(struct btd_device *device, const char *path)
 	hogdev = hog_device_new(device, path);
 	if (!hogdev)
 		return -ENOMEM;
+
+	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
+	if (hogdev->uhid_fd < 0) {
+		int err = errno;
+		error("Failed to open UHID device: %s", strerror(err));
+		return -err;
+	}
+
+	io = g_io_channel_unix_new(hogdev->uhid_fd);
+	g_io_channel_set_encoding(io, NULL, NULL);
+	hogdev->uhid_watch_id = g_io_add_watch(io, cond, uhid_event_cb,
+								hogdev);
+	g_io_channel_unref(io);
 
 	hogdev->hog_primary = g_memdup(prim, sizeof(*prim));
 
@@ -628,6 +623,15 @@ int hog_device_unregister(const char *path)
 		return -EINVAL;
 
 	btd_device_remove_attio_callback(hogdev->device, hogdev->attioid);
+
+	if (hogdev->uhid_watch_id) {
+		g_source_remove(hogdev->uhid_watch_id);
+		hogdev->uhid_watch_id = 0;
+	}
+
+	close(hogdev->uhid_fd);
+	hogdev->uhid_fd = -1;
+
 	devices = g_slist_remove(devices, hogdev);
 	hog_device_free(hogdev);
 
