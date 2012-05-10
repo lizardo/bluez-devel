@@ -3121,7 +3121,8 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	device->attios = g_slist_append(device->attios, attio);
 
 	if (device->auto_id == 0)
-		device->auto_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+		device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_LOW,
+						AUTO_CONNECTION_INTERVAL,
 						att_connect, device,
 						att_connect_dispatched);
 
