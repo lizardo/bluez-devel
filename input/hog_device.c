@@ -291,6 +291,8 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
 		error("Failed to create UHID device: %s", strerror(errno));
+	else
+		DBG("UHID device created");
 }
 
 static void info_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -481,6 +483,8 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 
 	hogdev->attrib = g_attrib_ref(attrib);
 
+	DBG("HoG: connected");
+
 	gatt_discover_char(hogdev->attrib, prim->range.start, prim->range.end,
 					NULL, char_discovered_cb, hogdev);
 
@@ -494,6 +498,8 @@ static void attio_disconnected_cb(gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct uhid_event ev;
+
+	DBG("HoG: disconnected");
 
 	memset(&ev, 0, sizeof(ev));
 	ev.type = UHID_DESTROY;
