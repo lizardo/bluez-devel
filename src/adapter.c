@@ -2838,14 +2838,40 @@ static gboolean pairing_is_legacy(bdaddr_t *local, bdaddr_t *peer,
 		return TRUE;
 }
 
-static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
+static inline char ba_type2char(uint8_t bdaddr_type)
 {
-	char local_addr[18], peer_addr[18], filename[PATH_MAX + 1];
+	switch (bdaddr_type) {
+	case BDADDR_LE_PUBLIC:
+		return '1';
+	case BDADDR_LE_RANDOM:
+		return '2';
+	case BDADDR_BREDR:
+	default:
+		return '0';
+	}
+}
+
+static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t bdaddr_type, const char *file)
+{
+	char local_addr[18], peer_addr[20], filename[PATH_MAX + 1], *str;
 
 	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, file);
+
+	memset(peer_addr, 0, sizeof(peer_addr));
+
+	ba2str(peer, peer_addr);
+	peer_addr[17] = '#';
+	peer_addr[18] = ba_type2char(bdaddr_type);
+
+	str = textfile_get(filename, peer_addr);
+	if (str != NULL)
+		return str;
+
+	/* Try old format (address only) */
+	peer_addr[17] = '\0';
 
 	return textfile_get(filename, peer_addr);
 }
@@ -2879,7 +2905,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 							eir_data.appearance);
 
 	if (eir_data.name != NULL && eir_data.name_complete)
-		write_device_name(&adapter->bdaddr, bdaddr, eir_data.name);
+		write_device_name(&adapter->bdaddr, bdaddr, bdaddr_type,
+								eir_data.name);
 
 	dev = adapter_search_found_devices(adapter, bdaddr);
 	if (dev) {
@@ -2904,7 +2931,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	/* New device in the discovery session */
 
-	name = read_stored_data(&adapter->bdaddr, bdaddr, "names");
+	name = read_stored_data(&adapter->bdaddr, bdaddr, bdaddr_type, "names");
 
 	if (bdaddr_type == BDADDR_BREDR) {
 		legacy = pairing_is_legacy(&adapter->bdaddr, bdaddr, data,
@@ -2924,7 +2951,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		adapter_ops->confirm_name(adapter->dev_id, bdaddr, bdaddr_type,
 								name_known);
 
-	alias = read_stored_data(&adapter->bdaddr, bdaddr, "aliases");
+	alias = read_stored_data(&adapter->bdaddr, bdaddr, bdaddr_type,
+								"aliases");
 
 	dev = found_device_new(bdaddr, bdaddr_type, name, alias, dev_class,
 						legacy, eir_data.flags);
