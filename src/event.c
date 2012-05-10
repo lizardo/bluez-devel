@@ -319,6 +319,7 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+	uint8_t bdaddr_type;
 	struct remote_dev_info *dev_info;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
@@ -333,10 +334,12 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		g_strstrip(name);
 	}
 
-	write_device_name(local, peer, name);
-
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
+
+	bdaddr_type = device_get_addr_type(device);
+
+	write_device_name(local, peer, bdaddr_type, name);
 
 	dev_info = adapter_search_found_devices(adapter, peer);
 	if (dev_info) {

@@ -358,9 +358,10 @@ int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class)
 	return 0;
 }
 
-int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
+int write_device_name(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+								char *name)
 {
-	char filename[PATH_MAX + 1], addr[18], str[HCI_MAX_NAME_LENGTH + 1];
+	char filename[PATH_MAX + 1], key[20], str[HCI_MAX_NAME_LENGTH + 1];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -374,21 +375,34 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", bdaddr_type);
+
+	return textfile_put(filename, key, str);
 }
 
-int read_device_name(const char *src, const char *dst, char *name)
+int read_device_name(const char *src, const char *dst, uint8_t bdaddr_type,
+								char *name)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], *str, key[20];
 	int len;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "names");
 
-	str = textfile_get(filename, dst);
-	if (!str)
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, bdaddr_type);
+
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	str = textfile_get(filename, key);
+	if (str == NULL)
 		return -ENOENT;
 
+done:
 	len = strlen(str);
 	if (len > HCI_MAX_NAME_LENGTH)
 		str[HCI_MAX_NAME_LENGTH] = '\0';
