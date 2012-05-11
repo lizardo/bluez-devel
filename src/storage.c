@@ -1189,38 +1189,53 @@ int read_device_pairable(bdaddr_t *bdaddr, gboolean *mode)
 	return 0;
 }
 
-gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote)
+gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote,
+							uint8_t bdaddr_type)
 {
-	char filename[PATH_MAX + 1], *str, addr[18];
+	char filename[PATH_MAX + 1], *str, key[20];
 
 	create_filename(filename, PATH_MAX, local, "blocked");
 
-	ba2str(remote, addr);
+	memset(key, 0, sizeof(key));
+	ba2str(remote, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
 
-	str = textfile_caseget(filename, addr);
+	/* New format: address#type */
+	str = textfile_caseget(filename, key);
+	if (str)
+		goto done;
+
+	/* Old format: address only */
+	key[17] = '\0';
+	str = textfile_caseget(filename, key);
 	if (!str)
 		return FALSE;
 
+done:
 	free(str);
 
 	return TRUE;
 }
 
 int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-							gboolean blocked)
+					uint8_t bdaddr_type, gboolean blocked)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	create_filename(filename, PATH_MAX, local, "blocked");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(remote, addr);
+	memset(key, 0, sizeof(key));
+	ba2str(remote, key);
+	key[18] = '#';
+	key[19] = ba_type2char(bdaddr_type);
 
 	if (blocked == FALSE)
-		return textfile_casedel(filename, addr);
+		return textfile_casedel(filename, key);
 
-	return textfile_caseput(filename, addr, "");
+	return textfile_caseput(filename, key, "");
 }
 
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
