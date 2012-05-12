@@ -458,10 +458,10 @@ done:
 	return 0;
 }
 
-int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
-							uint8_t data_len)
+int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+						uint8_t *data, uint8_t data_len)
 {
-	char filename[PATH_MAX + 1], addr[18], str[481];
+	char filename[PATH_MAX + 1], key[20], str[481];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -472,23 +472,42 @@ int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	memset(key, 0, sizeof(key));
+
+	ba2str(peer, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
+
+	return textfile_put(filename, key, str);
 }
 
-int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
+int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+								uint8_t *data)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 	int i;
 
 	create_filename(filename, PATH_MAX, local, "eir");
 
-	ba2str(peer, addr);
+	memset(key, 0, sizeof(key));
 
-	str = textfile_get(filename, addr);
-	if (!str)
+	/* New format: address#type */
+	ba2str(peer, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
+
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Old format: address only */
+	key[17] = '\0';
+
+	str = textfile_get(filename, key);
+	if (str == NULL)
 		return -ENOENT;
 
+done:
 	if (!data) {
 		free(str);
 		return 0;
