@@ -1480,9 +1480,10 @@ void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer)
 	delete_by_pattern(filename, addr);
 }
 
-int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key)
+int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+								const char *key)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], addr[20];
 
 	if (!key)
 		return -EINVAL;
@@ -1491,20 +1492,29 @@ int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
+	memset(addr, 0, sizeof(addr));
+
 	ba2str(peer, addr);
+	addr[17] = '#';
+	addr[18] = ba_type2char(bdaddr_type);
+
 	return textfile_put(filename, addr, key);
 }
 
-gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer)
+gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 
 	create_filename(filename, PATH_MAX, local, "longtermkeys");
 
-	ba2str(peer, addr);
+	memset(key, 0, sizeof(key));
 
-	str = textfile_caseget(filename, addr);
-	if (str) {
+	ba2str(peer, key);
+	key[17] = '#';
+	key[18] = ba_type2char(bdaddr_type);
+
+	str = textfile_caseget(filename, key);
+	if (str != NULL) {
 		free(str);
 		return TRUE;
 	}

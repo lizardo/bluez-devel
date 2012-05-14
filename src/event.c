@@ -397,7 +397,7 @@ static int store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 	newkey = g_string_append(newkey, str);
 	g_free(str);
 
-	err = write_longtermkeys(local, peer, newkey->str);
+	err = write_longtermkeys(local, peer, bdaddr_type, newkey->str);
 
 	g_string_free(newkey, TRUE);
 
