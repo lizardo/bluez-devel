@@ -1796,6 +1796,7 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 	struct btd_device *device = user_data;
 	int sock, err = 0;
 	socklen_t len;
+	char addr[18];
 
 	if (device->browse)
 		goto done;
@@ -1806,7 +1807,11 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
-	if (device->auto_connect == FALSE || err != ETIMEDOUT)
+	ba2str(&device->bdaddr, addr);
+	DBG("%s: %s(%d)", addr, strerror(err), err);
+
+	if (device->auto_connect == FALSE ||
+			(err != ETIMEDOUT && err != ECONNRESET))
 		goto done;
 
 	device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT_IDLE,
