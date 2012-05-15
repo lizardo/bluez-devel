@@ -1152,28 +1152,46 @@ uint16_t btd_device_get_version(struct btd_device *device)
 	return device->version;
 }
 
+static inline char ba_type2char(uint8_t bdaddr_type)
+{
+	switch (bdaddr_type) {
+	case BDADDR_LE_PUBLIC:
+		return '1';
+	case BDADDR_LE_RANDOM:
+		return '2';
+	case BDADDR_BREDR:
+	default:
+		return '0';
+	}
+}
+
 static void device_remove_stored(struct btd_device *device)
 {
 	bdaddr_t src;
-	char addr[18];
+	char key[20];
 	DBusConnection *conn = get_dbus_connection();
 
 	adapter_get_address(device->adapter, &src);
-	ba2str(&device->bdaddr, addr);
+
+	memset(key, 0, sizeof(key));
+
+	ba2str(&device->bdaddr, key);
+	key[17] = '#';
+	key[18] = ba_type2char(device->bdaddr_type);
 
 	if (device_is_bonded(device)) {
-		delete_entry(&src, "linkkeys", addr);
-		delete_entry(&src, "aliases", addr);
-		delete_entry(&src, "longtermkeys", addr);
+		delete_entry(&src, "linkkeys", key);
+		delete_entry(&src, "aliases", key);
+		delete_entry(&src, "longtermkeys", key);
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
 							device->bdaddr_type);
 	}
-	delete_entry(&src, "profiles", addr);
-	delete_entry(&src, "trusts", addr);
+	delete_entry(&src, "profiles", key);
+	delete_entry(&src, "trusts", key);
 	delete_all_records(&src, &device->bdaddr);
-	delete_device_service(&src, &device->bdaddr);
+	delete_device_service(&src, &device->bdaddr, device->bdaddr_type);
 
 	if (device->blocked)
 		device_unblock(conn, device, TRUE, FALSE);
