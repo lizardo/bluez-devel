@@ -1814,7 +1814,8 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
-	if (device->auto_connect == FALSE || err != ETIMEDOUT)
+	if (device->auto_connect == FALSE ||
+			(err != ETIMEDOUT && err != ECONNRESET))
 		goto done;
 
 	device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT_IDLE,
