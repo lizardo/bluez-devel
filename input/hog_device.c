@@ -621,6 +621,7 @@ static void hog_device_free(struct hog_device *hogdev)
 int hog_device_unregister(const char *path)
 {
 	struct hog_device *hogdev;
+	struct uhid_event ev;
 
 	hogdev = find_device_by_path(devices, path);
 	if (hogdev == NULL)
@@ -632,6 +633,11 @@ int hog_device_unregister(const char *path)
 		g_source_remove(hogdev->uhid_watch_id);
 		hogdev->uhid_watch_id = 0;
 	}
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_DESTROY;
+	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
+		error("Failed to destroy UHID device: %s", strerror(errno));
 
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
