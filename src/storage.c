@@ -1412,9 +1412,10 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 }
 
 int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
-					uint16_t handle, const char *chars)
+				uint8_t bdaddr_type, uint16_t handle,
+							const char *chars)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], addr[18], key[25];
 
 	create_filename(filename, PATH_MAX, sba, "attributes");
 
@@ -1422,7 +1423,9 @@ int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
 
 	ba2str(dba, addr);
 
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	/* New format: address#type */
+	snprintf(key, sizeof(key), "%17s#%c#%04X", addr,
+			ba_type2char(bdaddr_type), handle);
 
 	return textfile_put(filename, key, chars);
 }
