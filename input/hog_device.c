@@ -559,6 +559,7 @@ int hog_device_register(struct btd_device *device, const char *path)
 	struct gatt_primary *prim;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
 	GIOChannel *io;
+	int fd;
 
 	hogdev = find_device_by_path(devices, path);
 	if (hogdev)
@@ -568,16 +569,19 @@ int hog_device_register(struct btd_device *device, const char *path)
 	if (!prim)
 		return -EINVAL;
 
-	hogdev = hog_device_new(device, path);
-	if (!hogdev)
-		return -ENOMEM;
-
-	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
-	if (hogdev->uhid_fd < 0) {
+	fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
 		int err = errno;
 		error("Failed to open UHID device: %s", strerror(err));
 		return -err;
 	}
+
+	hogdev = hog_device_new(device, path);
+	if (!hogdev) {
+		close(fd);
+		return -ENOMEM;
+	}
+	hogdev->uhid_fd = fd;
 
 	io = g_io_channel_unix_new(hogdev->uhid_fd);
 	g_io_channel_set_encoding(io, NULL, NULL);
