@@ -457,8 +457,8 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	ba2str(&device->bdaddr, dstaddr);
 
 	/* Remove alias if empty string */
-	err = write_device_alias(srcaddr, dstaddr,
-			g_str_equal(alias, "") ? NULL : alias);
+	err = write_device_alias(srcaddr, dstaddr, device->bdaddr_type,
+					g_str_equal(alias, "") ? NULL : alias);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -1076,7 +1076,8 @@ struct btd_device *device_create(DBusConnection *conn,
 	ba2str(&src, srcaddr);
 
 	read_device_name(srcaddr, address, bdaddr_type, device->name);
-	if (read_device_alias(srcaddr, address, alias, sizeof(alias)) == 0)
+	if (read_device_alias(srcaddr, address, bdaddr_type, alias,
+							sizeof(alias)) == 0)
 		device->alias = g_strdup(alias);
 	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
 
@@ -1157,19 +1158,16 @@ static void device_remove_stored(struct btd_device *device)
 	DBusConnection *conn = get_dbus_connection();
 
 	adapter_get_address(device->adapter, &src);
-	ba2str(&device->bdaddr, key);
 
-	/* key: address only */
+	ba2str(&device->bdaddr, key);
+	sprintf(&key[17], "#%hhu", device->bdaddr_type);
+
 	delete_entry(&src, "profiles", key);
 	delete_entry(&src, "trusts", key);
 
 	if (device_is_bonded(device)) {
 		delete_entry(&src, "linkkeys", key);
 		delete_entry(&src, "aliases", key);
-
-		/* key: address#type */
-		sprintf(&key[17], "#%hhu", device->bdaddr_type);
-
 		delete_entry(&src, "longtermkeys", key);
 
 		device_set_bonded(device, FALSE);
