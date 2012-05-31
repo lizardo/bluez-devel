@@ -593,6 +593,7 @@ static int hidp_add_connection(const struct input_device *idev,
 	struct hidp_connadd_req *req;
 	struct fake_hid *fake_hid;
 	struct fake_input *fake;
+	uint8_t bdaddr_type;
 	sdp_record_t *rec;
 	char src_addr[18], dst_addr[18];
 	GError *gerr = NULL;
@@ -607,7 +608,9 @@ static int hidp_add_connection(const struct input_device *idev,
 	ba2str(&idev->src, src_addr);
 	ba2str(&idev->dst, dst_addr);
 
-	rec = fetch_record(src_addr, dst_addr, idev->handle);
+	bdaddr_type = device_get_addr_type(idev->device);
+
+	rec = fetch_record(src_addr, dst_addr, bdaddr_type, idev->handle);
 	if (!rec) {
 		error("Rejected connection from unknown device %s", dst_addr);
 		err = -EPERM;
