@@ -874,10 +874,6 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	else
 		channel->mtu = MIN(mtu, channel->mtu);
 
-	bt_io_set(channel->server->le_io, BT_IO_L2CAP, NULL,
-			BT_IO_OPT_OMTU, channel->mtu,
-			BT_IO_OPT_INVALID);
-
 	return enc_mtu_resp(old_mtu, pdu, len);
 }
 
