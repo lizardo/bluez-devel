@@ -1963,6 +1963,9 @@ static void att_error_cb(const GError *gerr, gpointer user_data)
 	struct att_callbacks *attcb = user_data;
 	struct btd_device *device = attcb->user_data;
 
+	if (gerr->code == ECONNABORTED)
+		return;
+
 	if (device->auto_connect == FALSE)
 		return;
 
