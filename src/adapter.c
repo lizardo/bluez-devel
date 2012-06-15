@@ -1869,6 +1869,24 @@ static DBusMessage *unregister_manufobserver(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *set_service_data(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *set_manufacturer_data(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *clear_broadcast_data(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -1924,6 +1942,14 @@ static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_METHOD("UnregisterManufacturerObserver",
 			GDBUS_ARGS({ "observer", "o" }), NULL,
 			unregister_manufobserver) },
+	{ GDBUS_METHOD("SetServiceData", GDBUS_ARGS({ "uuid", "q" },
+					{ "data", "ay" }), NULL,
+			set_service_data) },
+	{ GDBUS_METHOD("SetManufacturerData", GDBUS_ARGS({ "company_id", "q" },
+					{ "data", "ay" }), NULL,
+			set_manufacturer_data) },
+	{ GDBUS_METHOD("ClearBroadcastData", NULL, NULL,
+			clear_broadcast_data) },
 	{ }
 };
 
