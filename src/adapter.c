@@ -1617,6 +1617,30 @@ static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *register_service_observer(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *unregister_service_observer(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *register_manufobserver(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *unregister_manufobserver(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -1658,6 +1682,20 @@ static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_METHOD("UnregisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL,
 			unregister_agent) },
+	{ GDBUS_METHOD("RegisterServiceObserver",
+			GDBUS_ARGS({ "observer", "o" }, { "match_value", "q" }),
+			NULL,
+			register_service_observer) },
+	{ GDBUS_METHOD("UnregisterServiceObserver",
+			GDBUS_ARGS({ "observer", "o" }), NULL,
+			unregister_service_observer) },
+	{ GDBUS_METHOD("RegisterManufacturerObserver",
+			GDBUS_ARGS({ "observer", "o" }, { "match_value", "q" }),
+			NULL,
+			register_manufobserver) },
+	{ GDBUS_METHOD("UnregisterManufacturerObserver",
+			GDBUS_ARGS({ "observer", "o" }), NULL,
+			unregister_manufobserver) },
 	{ }
 };
 
