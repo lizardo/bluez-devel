@@ -38,6 +38,9 @@
 #define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
 #define EIR_MANUF_DATA              0xFF  /* manufacturer specific data */
 
+/* Reserve 2 octets for length and data type */
+#define EIR_DATA_MAX_LEN            (HCI_MAX_EIR_LENGTH - 2)
+
 struct uuid_info {
 	uuid_t uuid;
 	uint8_t svc_hint;
