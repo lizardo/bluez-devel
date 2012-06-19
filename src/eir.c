@@ -38,12 +38,32 @@
 #include "glib-helper.h"
 #include "eir.h"
 
+static void svc_data_free(void *p)
+{
+	struct svc_data *sdata = p;
+
+	g_free(sdata->data);
+	g_free(sdata);
+}
+
+static void manuf_data_free(void *p)
+{
+	struct manuf_data *mdata = p;
+
+	g_free(mdata->data);
+	g_free(mdata);
+}
+
 void eir_data_free(struct eir_data *eir)
 {
 	g_slist_free_full(eir->services, g_free);
 	eir->services = NULL;
 	g_free(eir->name);
 	eir->name = NULL;
+	g_slist_free_full(eir->svcs_data, svc_data_free);
+	eir->svcs_data = NULL;
+	g_slist_free_full(eir->manufs_data, manuf_data_free);
+	eir->manufs_data = NULL;
 }
 
 static void eir_parse_uuid16(struct eir_data *eir, void *data, uint8_t len)
@@ -107,6 +127,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
 		uint8_t data_len, *data = &eir_data[2];
+		struct svc_data *sdata;
+		struct manuf_data *mdata;
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
@@ -163,10 +185,31 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			memcpy(eir->dev_class, data, 3);
 			break;
 
+		case EIR_SVC_DATA:
+			if (data_len < 2)
+				break;
+			sdata = g_new(struct svc_data, 1);
+			sdata->uuid = bt_get_le16(data);
+			sdata->data_len = data_len - 2;
+			sdata->data = g_memdup(data + 2, data_len - 2);
+			eir->svcs_data = g_slist_append(eir->svcs_data, sdata);
+			break;
+
 		case EIR_GAP_APPEARANCE:
 			if (data_len < 2)
 				break;
 			eir->appearance = bt_get_le16(data);
+			break;
+
+		case EIR_MANUF_DATA:
+			if (data_len < 2)
+				break;
+			mdata = g_new(struct manuf_data, 1);
+			mdata->company_id = bt_get_le16(data);
+			mdata->data_len = data_len - 2;
+			mdata->data = g_memdup(data + 2, data_len - 2);
+			eir->manufs_data = g_slist_append(eir->manufs_data,
+									mdata);
 			break;
 		}
 

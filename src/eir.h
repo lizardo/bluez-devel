@@ -34,11 +34,25 @@
 #define EIR_TX_POWER                0x0A  /* transmit power level */
 #define EIR_CLASS_OF_DEV            0x0D  /* Class of Device */
 #define EIR_DEVICE_ID               0x10  /* device ID */
+#define EIR_SVC_DATA                0x16  /* service data */
 #define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
+#define EIR_MANUF_DATA              0xFF  /* manufacturer specific data */
 
 struct uuid_info {
 	uuid_t uuid;
 	uint8_t svc_hint;
+};
+
+struct svc_data {
+	uint16_t uuid;
+	uint8_t data_len;
+	uint8_t *data;
+};
+
+struct manuf_data {
+	uint16_t company_id;
+	uint8_t data_len;
+	uint8_t *data;
 };
 
 struct eir_data {
@@ -48,6 +62,8 @@ struct eir_data {
 	uint8_t dev_class[3];
 	uint16_t appearance;
 	gboolean name_complete;
+	GSList *svcs_data;
+	GSList *manufs_data;
 };
 
 void eir_data_free(struct eir_data *eir);
