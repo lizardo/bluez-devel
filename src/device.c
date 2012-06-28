@@ -67,8 +67,6 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
-#define AUTO_CONNECTION_INTERVAL	5 /* Next connection attempt */
-
 #define APPEARANCE_CHR_UUID 0x2a01
 
 struct btd_disconnect_data {
