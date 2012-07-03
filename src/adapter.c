@@ -1872,6 +1872,23 @@ static DBusMessage *unregister_manufobserver(DBusConnection *conn,
 static DBusMessage *set_service_data(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct btd_adapter *adapter = data;
+	const char *sender;
+	uint16_t uuid;
+	uint8_t *sdata;
+	int ssize;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT16, &uuid,
+						DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+						&sdata, &ssize,
+						DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	sender = dbus_message_get_sender(msg);
+
+	DBG("Service Data Broadcaster registered for hci%d at %s",
+						adapter->dev_id, sender);
+
 	return dbus_message_new_method_return(msg);
 }
 
