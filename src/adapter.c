@@ -2196,6 +2196,9 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	DBG("%s added to %s's connect_list", device_get_path(device),
 								adapter->name);
 
+	if (!adapter->up)
+		return;
+
 	if (adapter->disc_sessions)
 		return;
 
