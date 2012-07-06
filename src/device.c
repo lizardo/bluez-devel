@@ -2245,6 +2245,9 @@ void device_set_temporary(struct btd_device *device, gboolean temporary)
 
 	DBG("temporary %d", temporary);
 
+	if (temporary)
+		adapter_connect_list_remove(device_get_adapter(device), device);
+
 	device->temporary = temporary;
 }
 
