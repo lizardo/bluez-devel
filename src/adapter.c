@@ -2199,6 +2199,9 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	if (!adapter->up)
 		return;
 
+	if (adapter->off_requested)
+		return;
+
 	if (adapter->disc_sessions)
 		return;
 
