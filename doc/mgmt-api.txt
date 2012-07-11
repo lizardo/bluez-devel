@@ -139,6 +139,8 @@ Read Controller Information Command
 		8	Basic Rate/Enhanced Data Rate
 		9	High Speed
 		10	Low Energy
+		11	Broadcaster
+		12	Observer
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -840,6 +842,68 @@ Set Device ID Command
 	not support EIR or if SSP is disabled, this command will still
 	succeed. The information are stored for later use and will survive
 	toggling SSP on and off.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Set Controller Data Command
+===========================
+
+	Command Code:		0x0029
+	Controller Index:	<controller id>
+	Command Parameters:	Flags (1 Octet)
+				Data_Type (1 Octet)
+				Data_Length (1 Octet)
+				Data (0-255 Octets)
+	Return Parameters:
+
+	This command can be used to set AD for LE capable controllers or EIR
+	for BR/EDR controllers. Multiple AD/EIR types can be configured by
+	calling this command multiple times. If the controller is BR/EDR/LE
+	capable (also known as "dual mode"), only the LE advertising is set.
+
+	The Flags parameter is currently unused, but it will contain bitwise
+	flags to fine tune how and when the data will set on the controller.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Unset Controller Data Command
+=============================
+
+	Command Code:		0x002A
+	Controller Index:	<controller id>
+	Command Parameters:	Data_Type (1 Octet)
+	Return Parameters:
+
+	Remove the AD/EIR information identified by Data_Type, so it will not
+	be broadcasted anymore.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Set Broadcaster Command
+=======================
+
+	Command Code:		0x002B
+	Controller Index:	<controller id>
+	Command Parameters:	Broadcaster (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Set Observer Command
+====================
+
+	Command Code:		0x002C
+	Controller Index:	<controller id>
+	Command Parameters:	Observer (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
