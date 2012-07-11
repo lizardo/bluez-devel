@@ -139,6 +139,8 @@ Read Controller Information Command
 		8	Basic Rate/Enhanced Data Rate
 		9	High Speed
 		10	Low Energy
+		11	Broadcaster
+		12	Observer
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -312,6 +314,24 @@ Set Low Energy Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+
+Set Broadcaster Command
+=======================
+
+	Command Code:		0x0000
+	Controller Index:	<controller id>
+	Command Parameters:	Broadcaster (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+
+Set Observer Command
+====================
+
+	Command Code:		0x0000
+	Controller Index:	<controller id>
+	Command Parameters:	Observer (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
 
 
 Set Device Class
@@ -840,6 +860,44 @@ Set Device ID Command
 	not support EIR or if SSP is disabled, this command will still
 	succeed. The information are stored for later use and will survive
 	toggling SSP on and off.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Set Controller Data Command
+===========================
+
+	Command Code:		0x0000
+	Controller Index:	<controller id>
+	Command Parameters:	Flags (1 Octet)
+				Data_Type (1 Octet)
+				Data_Length (1 Octet)
+				Data (0-255 Octets)
+	Return Parameters:
+
+	This command can be used to set AD for LE capable controllers or EIR
+	for BR/EDR controllers. Multiple AD/EIR types can be configured by
+	calling this command multiple times.
+
+	The following bits are defined for the Flags parameter:
+		0	High priority
+		1	Add to LE advertising data
+		2	Add to BR/EDR EIR
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
+
+Remove Controller Data Command
+==============================
+
+	Command Code:		0x0000
+	Controller Index:	<controller id>
+	Command Parameters:	Data_Type (1 Octet)
+	Return Parameters:
+
+	...
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
