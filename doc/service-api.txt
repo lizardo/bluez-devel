@@ -43,6 +43,27 @@ Methods		uint32 AddRecord(string record)
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
+		void RegisterWatcher(object agent, dict settings,
+						array{object} characteristics)
+
+			Register a watcher to monitor characteristic changes.
+
+			A watcher will be registered for each specified
+			characteristic object. The settings dictionary has the
+			following format:
+
+			{
+				"raw": boolean (optional)
+			}
+
+			If the "raw" setting is enabled, the RawValueChanged()
+			watcher method is called when the characteristic value
+			changes, otherwise, ValueChanged() is called.
+
+		void UnregisterWatcher(object agent)
+
+			Unregister a characteristic watcher.
+
 		void RequestAuthorization(string address, uint32 handle)
 
 			Request an authorization for an incoming connection

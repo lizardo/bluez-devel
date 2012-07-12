@@ -120,3 +120,10 @@ Methods		void ValueChanged(object characteristic, dict value)
 
 			This method is only called when the "raw" setting is
 			enabled on Adapter.RegisterCharacteristicsWatcher().
+
+		void Release()
+
+			This method is called when the service daemon
+			unregisters the watcher, which can then perform cleanup
+			tasks. There is no need to unregister the watcher if
+			this method is called.
