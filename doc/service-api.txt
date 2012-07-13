@@ -43,6 +43,39 @@ Methods		uint32 AddRecord(string record)
 					 org.bluez.Error.DoesNotExist
 					 org.bluez.Error.Failed
 
+		void Register(string uuid, dict settings,
+					array{object} characteristics)
+
+			Add a GATT based service. The uuid represents the
+			primary/secondary service UUID. The settings
+			dictionary has the following format:
+			{
+				"id": string (optional)
+			}
+
+			settings field is being added to allow API
+			flexibility. The "id" field allows the core to
+			manage handle allocation and internal GATT storage.
+
+			GATT included services is supported by providing the
+			same characteristic object path (restricted to same
+			provider/owner).
+
+			The characteristic objects implemented by the
+			caller shall follow the interface defined in the
+			attribute API.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+
+		void Unregister(string uuid)
+
+			Removes a given GATT based service previously
+			registered by the caller.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotAuthorized
+
 		void RegisterWatcher(object agent, dict settings,
 						array{object} characteristics)
 
