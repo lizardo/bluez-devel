@@ -329,6 +329,11 @@ struct mgmt_cp_set_controller_data {
 	uint8_t data[0];
 } __packed;
 
+#define MGMT_OP_UNSET_CONTROLLER_DATA	0x002A
+struct mgmt_cp_unset_controller_data {
+	uint8_t data_type;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -501,6 +506,7 @@ static const char *mgmt_op[] = {
 	"Unblock Device",
 	"Set Device ID",
 	"Set Controller Data",
+	"Unset Controller Data",
 };
 
 static const char *mgmt_ev[] = {
