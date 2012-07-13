@@ -1099,6 +1099,11 @@ static void cmd_le(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt_sk, index, MGMT_OP_SET_LE, argc, argv);
 }
 
+static void cmd_broadcaster(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_BROADCASTER, argc, argv);
+}
+
 static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -1834,6 +1839,7 @@ static struct {
 	{ "rm-uuid",	cmd_add_uuid,	"Remove UUID"			},
 	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs",			},
 	{ "did",	cmd_did,	"Set Device ID",		},
+	{ "broadcaster",cmd_broadcaster,"Toggle Broadcaster Mode",	},
 	{ NULL, NULL, 0 }
 };
 
