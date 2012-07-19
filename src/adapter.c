@@ -2202,14 +2202,15 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	if (adapter->off_requested)
 		return;
 
-	if (adapter->disc_sessions)
+	if (adapter->scanning_session)
 		return;
+
+	if (adapter->disc_sessions == NULL)
+		adapter->discov_id = g_idle_add(discovery_cb, adapter);
 
 	req = create_session(adapter, NULL, NULL, 0, NULL);
 	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
 	adapter->scanning_session = req;
-
-	adapter->discov_id = g_idle_add(discovery_cb, adapter);
 }
 
 void adapter_connect_list_remove(struct btd_adapter *adapter,
