@@ -23,8 +23,10 @@
 
 #include "textfile.h"
 
-int read_device_alias(const char *src, const char *dst, char *alias, size_t size);
-int write_device_alias(const char *src, const char *dst, const char *alias);
+int read_device_alias(const char *src, const char *dst, uint8_t dst_type,
+						char *alias, size_t size);
+int write_device_alias(const char *src, const char *dst, uint8_t dst_type,
+							const char *alias);
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout);
 int read_discoverable_timeout(const char *src, int *timeout);
 int write_pairable_timeout(bdaddr_t *bdaddr, int timeout);
@@ -46,39 +48,52 @@ int write_device_name(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
 								char *name);
 int read_device_name(const char *src, const char *dst, uint8_t dst_type,
 								char *name);
-int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
-							uint8_t data_len);
-int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data);
+int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+					uint8_t *data, uint8_t data_len);
+int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								uint8_t *data);
 int write_version_info(bdaddr_t *local, bdaddr_t *peer, uint16_t manufacturer, uint8_t lmp_ver, uint16_t lmp_subver);
 int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *page1, unsigned char *page2);
 int read_remote_features(bdaddr_t *local, bdaddr_t *peer, unsigned char *page1, unsigned char *page2);
-int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length);
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type);
+int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm);
+int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm);
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+				unsigned char *key, uint8_t type, int length);
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+					unsigned char *key, uint8_t *type);
 ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
-gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service);
-int write_trust(const char *src, const char *addr, const char *service, gboolean trust);
-int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
+gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type,
+							const char *service);
+int write_trust(const char *src, const char *addr, uint8_t addr_type,
+					const char *service, gboolean trust);
+int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
+							const char *profiles);
 int delete_entry(bdaddr_t *src, const char *storage, const char *key);
-int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
+int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							sdp_record_t *rec);
 sdp_record_t *record_from_string(const gchar *str);
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
-int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst);
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
+			   uint8_t dst_type, const uint32_t handle);
+int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							const uint32_t handle);
+void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
+							uint8_t dst_type);
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
-int store_device_id(const gchar *src, const gchar *dst,
+int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version);
-int read_device_id(const gchar *src, const gchar *dst,
+int read_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 					uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version);
 int write_device_pairable(bdaddr_t *local, gboolean mode);
 int read_device_pairable(bdaddr_t *local, gboolean *mode);
-gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote);
+gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote,
+							uint8_t remote_type);
 int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-							gboolean blocked);
+				uint8_t remote_type, gboolean blocked);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 				uint8_t bdaddr_type, const char *services);
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,

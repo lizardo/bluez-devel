@@ -62,17 +62,29 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-int read_device_alias(const char *src, const char *dst, char *alias, size_t size)
+int read_device_alias(const char *src, const char *dst, uint8_t dst_type,
+						char *alias, size_t size)
 {
 	char filename[PATH_MAX + 1], *tmp;
+	char key[20];
 	int err;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
 
-	tmp = textfile_get(filename, dst);
-	if (!tmp)
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	tmp = textfile_get(filename, key);
+	if (tmp != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	tmp = textfile_get(filename, key);
+	if (tmp == NULL)
 		return -ENXIO;
 
+done:
 	err = snprintf(alias, size, "%s", tmp);
 
 	free(tmp);
@@ -80,15 +92,19 @@ int read_device_alias(const char *src, const char *dst, char *alias, size_t size
 	return err < 0 ? -EIO : 0;
 }
 
-int write_device_alias(const char *src, const char *dst, const char *alias)
+int write_device_alias(const char *src, const char *dst, uint8_t dst_type,
+							const char *alias)
 {
 	char filename[PATH_MAX + 1];
+	char key[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	return textfile_put(filename, dst, alias);
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	return textfile_put(filename, key, alias);
 }
 
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)
@@ -414,10 +430,10 @@ done:
 	return 0;
 }
 
-int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
-							uint8_t data_len)
+int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+						uint8_t *data, uint8_t data_len)
 {
-	char filename[PATH_MAX + 1], addr[18], str[481];
+	char filename[PATH_MAX + 1], key[20], str[481];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -428,23 +444,35 @@ int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", peer_type);
+
+	return textfile_put(filename, key, str);
 }
 
-int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
+int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								uint8_t *data)
 {
-	char filename[PATH_MAX + 1], addr[18], *str;
+	char filename[PATH_MAX + 1], key[18], *str;
 	int i;
 
 	create_filename(filename, PATH_MAX, local, "eir");
 
-	ba2str(peer, addr);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", peer_type);
 
-	str = textfile_get(filename, addr);
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	str = textfile_get(filename, key);
 	if (!str)
 		return -ENOENT;
 
+done:
 	if (!data) {
 		free(str);
 		return 0;
@@ -556,9 +584,10 @@ int read_remote_features(bdaddr_t *local, bdaddr_t *peer,
 	return err;
 }
 
-int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
+int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm)
 {
-	char filename[PATH_MAX + 1], addr[18], str[24];
+	char filename[PATH_MAX + 1], key[20], str[24];
 
 	memset(str, 0, sizeof(str));
 	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
@@ -567,13 +596,16 @@ int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", peer_type);
+
+	return textfile_put(filename, key, str);
 }
 
-int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
+int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm)
 {
-	char filename[PATH_MAX + 1], addr[18], str[24];
+	char filename[PATH_MAX + 1], key[20], str[24];
 
 	memset(str, 0, sizeof(str));
 	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
@@ -582,13 +614,16 @@ int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", peer_type);
+
+	return textfile_put(filename, key, str);
 }
 
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length)
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+				unsigned char *key, uint8_t type, int length)
 {
-	char filename[PATH_MAX + 1], addr[18], str[38];
+	char filename[PATH_MAX + 1], addr[20], str[38];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -601,6 +636,7 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
 	ba2str(peer, addr);
+	sprintf(&addr[17], "#%hhu", peer_type);
 
 	if (length < 0) {
 		char *tmp = textfile_get(filename, addr);
@@ -614,18 +650,29 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t 
 	return textfile_put(filename, addr, str);
 }
 
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type)
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+					unsigned char *key, uint8_t *type)
 {
-	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
+	char filename[PATH_MAX + 1], addr[20], tmp[3], *str;
 	int i;
 
 	create_filename(filename, PATH_MAX, local, "linkkeys");
 
 	ba2str(peer, addr);
+	sprintf(&addr[17], "#%hhu", peer_type);
+
+	str = textfile_get(filename, addr);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	addr[17] = '\0';
+
 	str = textfile_get(filename, addr);
 	if (!str)
 		return -ENOENT;
 
+done:
 	if (!key) {
 		free(str);
 		return 0;
@@ -713,10 +760,10 @@ static char *service_list_to_string(GSList *services)
 	return g_strdup(str);
 }
 
-int write_trust(const char *src, const char *addr, const char *service,
-		gboolean trust)
+int write_trust(const char *src, const char *addr, uint8_t addr_type,
+					const char *service, gboolean trust)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 	GSList *services = NULL, *match;
 	gboolean trusted;
 	int ret;
@@ -725,8 +772,15 @@ int write_trust(const char *src, const char *addr, const char *service,
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	str = textfile_caseget(filename, addr);
-	if (str)
+	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
+
+	str = textfile_caseget(filename, key);
+	if (str == NULL) {
+		/* Try old format (address only) */
+		str = textfile_caseget(filename, addr);
+		if (str)
+			services = service_string_to_list(str);
+	} else
 		services = service_string_to_list(str);
 
 	match = g_slist_find_custom(services, service, (GCompareFunc) strcmp);
@@ -745,11 +799,14 @@ int write_trust(const char *src, const char *addr, const char *service,
 		services = g_slist_remove(services, match->data);
 
 	/* Remove the entry if the last trusted service was removed */
-	if (!trust && !services)
-		ret = textfile_casedel(filename, addr);
-	else {
+	if (!trust && !services) {
+		ret = textfile_casedel(filename, key);
+		if (ret < 0)
+			/* Try old format (address only) */
+			ret = textfile_casedel(filename, addr);
+	} else {
 		char *new_str = service_list_to_string(services);
-		ret = textfile_caseput(filename, addr, new_str);
+		ret = textfile_caseput(filename, key, new_str);
 		g_free(new_str);
 	}
 
@@ -760,18 +817,27 @@ int write_trust(const char *src, const char *addr, const char *service,
 	return ret;
 }
 
-gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service)
+gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type,
+							const char *service)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 	GSList *services;
 	gboolean ret;
 
 	create_filename(filename, PATH_MAX, local, "trusts");
 
+	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
+
+	str = textfile_caseget(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
 	str = textfile_caseget(filename, addr);
 	if (!str)
 		return FALSE;
 
+done:
 	services = service_string_to_list(str);
 
 	if (g_slist_find_custom(services, service, (GCompareFunc) strcmp))
@@ -785,9 +851,10 @@ gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service
 	return ret;
 }
 
-int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
+int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
+							const char *profiles)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	if (!profiles)
 		return -EINVAL;
@@ -796,22 +863,35 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(dst, addr);
-	return textfile_put(filename, addr, profiles);
+	ba2str(dst, key);
+	sprintf(&key[17], "#%hhu", dst_type);
+
+	return textfile_put(filename, key, profiles);
 }
 
 int delete_entry(bdaddr_t *src, const char *storage, const char *key)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX + 1], old_key[18];
+	int err;
+
+	memset(old_key, 0, sizeof(old_key));
+	memcpy(old_key, key, sizeof(old_key) - 1);
 
 	create_filename(filename, PATH_MAX, src, storage);
 
-	return textfile_del(filename, key);
+	/* key: address#type */
+	err = textfile_del(filename, key);
+	if (err < 0)
+		/* old_key: address only */
+		err = textfile_del(filename, old_key);
+
+	return err;
 }
 
-int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
+int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							sdp_record_t *rec)
 {
-	char filename[PATH_MAX + 1], key[28];
+	char filename[PATH_MAX + 1], key[30];
 	sdp_buf_t buf;
 	int err, size, i;
 	char *str;
@@ -820,7 +900,8 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, rec->handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type,
+								rec->handle);
 
 	if (sdp_gen_record_pdu(rec, &buf) < 0)
 		return -1;
@@ -864,34 +945,49 @@ sdp_record_t *record_from_string(const gchar *str)
 
 
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
-						const uint32_t handle)
+			   uint8_t dst_type, const uint32_t handle)
 {
-	char filename[PATH_MAX + 1], key[28], *str;
+	char filename[PATH_MAX + 1], old_key[28], key[30], *str;
 	sdp_record_t *rec;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
+	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
 
 	str = textfile_get(filename, key);
-	if (!str)
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address#handle) */
+	str = textfile_get(filename, old_key);
+	if (str == NULL)
 		return NULL;
 
+done:
 	rec = record_from_string(str);
 	free(str);
 
 	return rec;
 }
 
-int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
+int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							const uint32_t handle)
 {
-	char filename[PATH_MAX + 1], key[28];
+	char filename[PATH_MAX + 1], old_key[28], key[30];
+	int err;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
+	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
 
-	return textfile_del(filename, key);
+	err = textfile_del(filename, key);
+	if (err < 0)
+		/* Try old format (address#handle) */
+		err = textfile_del(filename, key);
+
+	return err;
 }
 
 struct record_list {
@@ -914,7 +1010,8 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst)
+void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
+							uint8_t dst_type)
 {
 	sdp_list_t *records, *seq;
 	char srcaddr[18], dstaddr[18];
@@ -926,7 +1023,7 @@ void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst)
 
 	for (seq = records; seq; seq = seq->next) {
 		sdp_record_t *rec = seq->data;
-		delete_record(srcaddr, dstaddr, rec->handle);
+		delete_record(srcaddr, dstaddr, dst_type, rec->handle);
 	}
 
 	if (records)
@@ -980,35 +1077,46 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 	return NULL;
 }
 
-int store_device_id(const gchar *src, const gchar *dst,
+int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version)
 {
-	char filename[PATH_MAX + 1], str[20];
+	char filename[PATH_MAX + 1], key[20], str[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
 	snprintf(str, sizeof(str), "%04X %04X %04X %04X", source,
 						vendor, product, version);
 
-	return textfile_put(filename, dst, str);
+	return textfile_put(filename, key, str);
 }
 
 static int read_device_id_from_did(const gchar *src, const gchar *dst,
-					uint16_t *source, uint16_t *vendor,
-					uint16_t *product, uint16_t *version)
+				   uint8_t dst_type, uint16_t *source,
+				   uint16_t *vendor, uint16_t *product,
+							uint16_t *version)
 {
 	char filename[PATH_MAX + 1];
-	char *str, *vendor_str, *product_str, *version_str;
+	char key[20], *str, *vendor_str, *product_str, *version_str;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
 	str = textfile_get(filename, dst);
 	if (!str)
 		return -ENOENT;
 
+done:
 	vendor_str = strchr(str, ' ');
 	if (!vendor_str) {
 		free(str);
@@ -1045,7 +1153,7 @@ static int read_device_id_from_did(const gchar *src, const gchar *dst,
 }
 
 int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
-					uint16_t *source, uint16_t *vendor,
+		   uint8_t dst_type, uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version)
 {
 	uint16_t lsource, lvendor, lproduct, lversion;
@@ -1054,8 +1162,9 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 	bdaddr_t src, dst;
 	int err;
 
-	err = read_device_id_from_did(srcaddr, dstaddr, &lsource,
-						vendor, product, version);
+	err = read_device_id_from_did(srcaddr, dstaddr, dst_type, &lsource,
+								vendor, product,
+								version);
 	if (!err) {
 		if (lsource == 0xffff)
 			err = -ENOENT;
@@ -1100,7 +1209,8 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 		lversion = 0x0000;
 	}
 
-	store_device_id(srcaddr, dstaddr, lsource, lvendor, lproduct, lversion);
+	store_device_id(srcaddr, dstaddr, dst_type, lsource, lvendor,
+							lproduct, lversion);
 
 	if (err)
 		return err;
@@ -1145,38 +1255,49 @@ int read_device_pairable(bdaddr_t *bdaddr, gboolean *mode)
 	return 0;
 }
 
-gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote)
+gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote,
+							uint8_t remote_type)
 {
-	char filename[PATH_MAX + 1], *str, addr[18];
+	char filename[PATH_MAX + 1], *str, key[20];
 
 	create_filename(filename, PATH_MAX, local, "blocked");
 
-	ba2str(remote, addr);
+	ba2str(remote, key);
+	sprintf(&key[17], "#%hhu", remote_type);
 
-	str = textfile_caseget(filename, addr);
-	if (!str)
+	str = textfile_caseget(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	str = textfile_caseget(filename, key);
+	if (str == NULL)
 		return FALSE;
 
+done:
 	free(str);
 
 	return TRUE;
 }
 
 int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-							gboolean blocked)
+				uint8_t remote_type, gboolean blocked)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	create_filename(filename, PATH_MAX, local, "blocked");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(remote, addr);
+	ba2str(remote, key);
+	sprintf(&key[17], "#%hhu", remote_type);
 
 	if (blocked == FALSE)
-		return textfile_casedel(filename, addr);
+		return textfile_casedel(filename, key);
 
-	return textfile_caseput(filename, addr, "");
+	return textfile_caseput(filename, key, "");
 }
 
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,

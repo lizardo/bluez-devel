@@ -233,7 +233,7 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
+static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
 	struct tm *tm;
@@ -241,10 +241,10 @@ static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
 	t = time(NULL);
 	tm = gmtime(&t);
 
-	write_lastseen_info(sba, dba, tm);
+	write_lastseen_info(sba, dba, dba_type, tm);
 }
 
-static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
+static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
 	struct tm *tm;
@@ -252,7 +252,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 	t = time(NULL);
 	tm = gmtime(&t);
 
-	write_lastused_info(sba, dba, tm);
+	write_lastused_info(sba, dba, dba_type, tm);
 }
 
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
@@ -267,10 +267,10 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 		return;
 	}
 
-	update_lastseen(local, peer);
+	update_lastseen(local, peer, bdaddr_type);
 
 	if (data)
-		write_remote_eir(local, peer, data, data_len);
+		write_remote_eir(local, peer, bdaddr_type, data, data_len);
 
 	adapter_update_found_devices(adapter, peer, bdaddr_type, rssi,
 						confirm_name, data, data_len);
@@ -408,6 +408,7 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+	uint8_t peer_type;
 	int ret;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
@@ -415,7 +416,10 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	DBG("storing link key of type 0x%02x", key_type);
 
-	ret = write_link_key(local, peer, key, key_type, pin_length);
+	peer_type = device_get_addr_type(device);
+
+	ret = write_link_key(local, peer, peer_type, key, key_type,
+								pin_length);
 
 	if (ret == 0) {
 		device_set_bonded(device, TRUE);
@@ -460,7 +464,7 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_typ
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
 
-	update_lastused(local, peer);
+	update_lastused(local, peer, bdaddr_type);
 
 	if (dev_class != NULL) {
 		uint32_t class = dev_class[0] | (dev_class[1] << 8) |

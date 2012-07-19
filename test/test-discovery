@@ -22,10 +22,6 @@ def device_found(address, properties):
 
 	print()
 
-def property_changed(name, value):
-	if (name == "Discovering" and not value):
-		mainloop.quit()
-
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -52,10 +48,6 @@ if __name__ == '__main__':
 	bus.add_signal_receiver(device_found,
 			dbus_interface = "org.bluez.Adapter",
 					signal_name = "DeviceFound")
-
-	bus.add_signal_receiver(property_changed,
-			dbus_interface = "org.bluez.Adapter",
-					signal_name = "PropertyChanged")
 
 	adapter.StartDiscovery()
 
