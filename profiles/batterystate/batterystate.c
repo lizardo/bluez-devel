@@ -50,6 +50,7 @@ struct battery {
 static GSList *servers;
 
 struct characteristic {
+	char			*path;          /* object path */
 	struct gatt_char	attr;		/* Characteristic */
 	struct battery		*batt;		/* Parent Battery Service */
 	GSList				*desc;	/* Descriptors */
@@ -206,6 +207,11 @@ static void configure_batterystate_cb(GSList *characteristics, guint8 status,
 			ch->attr.value_handle = c->value_handle;
 			memcpy(ch->attr.uuid, c->uuid, MAX_LEN_UUID_STR + 1);
 			ch->batt = batt;
+			ch->path = g_strdup_printf("%s/BATT%04X",
+						device_get_path(batt->dev),
+						c->handle);
+
+			device_add_battery(batt->dev, ch->path);
 
 			batt->chars = g_slist_append(batt->chars, ch);
 
