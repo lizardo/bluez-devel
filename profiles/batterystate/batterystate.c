@@ -72,6 +72,8 @@ struct descriptor {
 	bt_uuid_t		uuid;		/* UUID */
 };
 
+static void emit_battery_level_changed(struct characteristic *c);
+
 static void char_free(gpointer user_data)
 {
 	struct characteristic *c = user_data;
@@ -161,6 +163,7 @@ static void read_batterylevel_cb(guint8 status, const guint8 *pdu, guint16 len,
 	}
 
 	ch->level = value[0];
+	emit_battery_level_changed(ch);
 }
 
 static void process_batteryservice_char(struct characteristic *ch)
