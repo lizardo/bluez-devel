@@ -1693,6 +1693,21 @@ static DBusMessage *register_manufobserver(DBusConnection *conn,
 static DBusMessage *unregister_manufobserver(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	const char *path, *sender = dbus_message_get_sender(msg);
+	struct btd_adapter *adapter = data;
+	int err;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	err = mgmt_set_observer(adapter->dev_id, FALSE);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	DBG("Manufacturer Specific Data Observer unregistered for hci%d at "
+					"%s:%s", adapter->dev_id, sender, path);
+
 	return dbus_message_new_method_return(msg);
 }
 
