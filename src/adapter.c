@@ -1667,6 +1667,26 @@ static DBusMessage *unregister_service_observer(DBusConnection *conn,
 static DBusMessage *register_manufobserver(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct btd_adapter *adapter = data;
+	const char *path, *sender = dbus_message_get_sender(msg);
+	unsigned int company_id;
+	int err;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_UINT16, &company_id,
+					DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	err = mgmt_set_observer(adapter->dev_id, TRUE);
+	if (err < 0) {
+		error("Failed to set Observer: %s (%d)", strerror(-err), -err);
+
+		return btd_error_failed(msg, strerror(-err));
+	}
+
+	DBG("Manufacturer Specific Data Observer registered for hci%d at %s:%s",
+						adapter->dev_id, sender, path);
+
 	return dbus_message_new_method_return(msg);
 }
 
