@@ -224,6 +224,51 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist
 
+		void SetServiceData(uint16 uuid, variant data)
+
+			Set Service Data for broadcast. Different applications
+			can register different Adv. data types, and they are
+			all concatenated to form the Adv. data.	Broadcasting is
+			enabled as soon as the first SetServiceData() call is
+			made.
+
+			This method can be used to update service data already
+			being broadcasted.
+
+			Use ClearBroadcastData() to release any Adv. data for
+			the application. Advertising data is also released when
+			application exits, and once the last Broadcaster exits,
+			advertising is disabled.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void SetManufacturerData(uint16 cid, variant data)
+
+			Set Manufacturer Specific Data for broadcast. Different
+			applications can register different Adv. data types,
+			and they are all concatenated to form the Adv. data.
+			Broadcasting is	enabled as soon as the first
+			SetManufacturerData() call is made.
+
+			This method can be used to update manufacturer data
+			already being broadcasted.
+
+			Use ClearBroadcastData() to release any Adv. data for
+			the application. Advertising data is also released when
+			application exits, and once the last Broadcaster exits,
+			advertising is disabled.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void ClearBroadcastData()
+
+			This method will release any previously set Advertising
+			data.
+
+			Possible errors: org.bluez.Error.Failed
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
