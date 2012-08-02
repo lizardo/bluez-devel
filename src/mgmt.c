@@ -2045,6 +2045,11 @@ int mgmt_set_fast_connectable(int index, gboolean enable)
 	return 0;
 }
 
+int mgmt_set_broadcaster(int index, gboolean enable)
+{
+	return mgmt_set_mode(index, MGMT_OP_SET_BROADCASTER, enable);
+}
+
 int mgmt_set_observer(int index, gboolean enable)
 {
 	return mgmt_set_mode(index, MGMT_OP_SET_OBSERVER, enable);

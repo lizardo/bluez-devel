@@ -31,6 +31,7 @@ int mgmt_set_pairable(int index, gboolean pairable);
 int mgmt_set_name(int index, const char *name);
 int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor);
 int mgmt_set_fast_connectable(int index, gboolean enable);
+int mgmt_set_broadcaster(int index, gboolean enable);
 int mgmt_set_observer(int index, gboolean enable);
 
 int mgmt_start_discovery(int index);
