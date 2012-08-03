@@ -2529,3 +2529,25 @@ int mgmt_set_controller_data(int index, uint8_t flags, uint8_t data_type,
 
 	return err;
 }
+
+int mgmt_unset_controller_data(int index, uint8_t data_type)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unset_controller_data)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_unset_controller_data *cp = (void *) &buf[sizeof(*hdr)];
+
+	DBG("hci%d data_type 0x%hhx", index, data_type);
+
+	memset(buf, 0, sizeof(buf));
+
+	hdr->opcode = htobs(MGMT_OP_UNSET_CONTROLLER_DATA);
+	hdr->index = htobs(index);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->data_type = data_type;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}

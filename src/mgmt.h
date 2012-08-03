@@ -85,3 +85,4 @@ int mgmt_ssp_enabled(int index);
 
 int mgmt_set_controller_data(int index, uint8_t flags, uint8_t data_type,
 					uint8_t *data, uint8_t data_length);
+int mgmt_unset_controller_data(int index, uint8_t data_type);
