@@ -82,3 +82,6 @@ int mgmt_confirm_name(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean name_known);
 
 int mgmt_ssp_enabled(int index);
+
+int mgmt_set_controller_data(int index, uint8_t flags, uint8_t data_type,
+					uint8_t *data, uint8_t data_length);

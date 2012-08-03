@@ -2497,3 +2497,35 @@ int mgmt_ssp_enabled(int index)
 
 	return mgmt_ssp(info->current_settings);
 }
+
+int mgmt_set_controller_data(int index, uint8_t flags, uint8_t data_type,
+					uint8_t *data, uint8_t data_length)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_controller_data) +
+							HCI_MAX_EIR_LENGTH];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_controller_data *cp = (void *) &buf[sizeof(*hdr)];
+	uint16_t cp_size;
+	int err = 0;
+
+	DBG("hci%d flags %d data_type 0x%hhx data_length %d", index, flags,
+							data_type, data_length);
+
+	memset(buf, 0, sizeof(buf));
+
+	cp_size = sizeof(*cp) + data_length;
+
+	hdr->opcode = htobs(MGMT_OP_SET_CONTROLLER_DATA);
+	hdr->index = htobs(index);
+	hdr->len = htobs(cp_size);
+
+	cp->flags = flags;
+	cp->data_type = data_type;
+	cp->data_length = data_length;
+	memcpy(cp->data, data, data_length);
+
+	if (write(mgmt_sock, buf, sizeof(*hdr) + cp_size) < 0)
+		err = -errno;
+
+	return err;
+}
