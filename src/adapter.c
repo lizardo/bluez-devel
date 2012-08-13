@@ -2009,6 +2009,10 @@ static void bcast_session_exit(DBusConnection *conn, void *user_data)
 static void update_adv_data(struct btd_adapter *adapter,
 		struct bcast_session *session, uint8_t *data, int size)
 {
+	session->data_len = size;
+	memcpy(session->data, data, size);
+
+	restore_bcast_type(adapter, session->data_type);
 }
 
 static DBusMessage *set_service_data(DBusConnection *conn,
