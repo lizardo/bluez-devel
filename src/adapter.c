@@ -2157,9 +2157,89 @@ failed:
 	return btd_error_failed(msg, strerror(-err));
 }
 
+static void restore_bcast_data(gpointer data, gpointer user_data)
+{
+	struct bcast_session *session = data, *cleared = user_data;
+
+	if (session == cleared)
+		return;
+
+	if (session->data_type != cleared->data_type)
+		return;
+
+	send_advdata_blob(session->adapter, session);
+}
+
+static gint cmp_bcast_session_owner(gconstpointer a, gconstpointer b)
+{
+	const struct bcast_session *session = a;
+	const char *owner = b;
+
+	return g_strcmp0(session->owner, owner);
+}
+
+static gboolean find_bcast_session_by_owner(struct btd_adapter *adapter,
+						const char *sender,
+						struct bcast_session **session)
+{
+	GSList *l;
+
+	l = g_slist_find_custom(adapter->bcast_sessions, sender,
+						cmp_bcast_session_owner);
+	if (!l)
+		return FALSE;
+
+	if (session)
+		*session = l->data;
+
+	return TRUE;
+}
+
 static DBusMessage *clear_broadcast_data(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
+	struct btd_adapter *adapter = data;
+	struct bcast_session *session;
+	const char *sender;
+	int err;
+
+	sender = dbus_message_get_sender(msg);
+
+	DBG("Clear all data int broadcaster registered for hci%d at %s",
+						adapter->dev_id, sender);
+
+	err = mgmt_set_broadcaster(adapter->dev_id, FALSE);
+	if (err < 0)
+		error("Failed to set Broadcaster: %s (%d)", strerror(-err),
+									-err);
+
+	while (find_bcast_session_by_owner(adapter, sender, &session)) {
+		uint8_t type = session->data_type;
+
+		err = mgmt_unset_controller_data(adapter->dev_id, type);
+		if (err < 0)
+			error("Failed to set Broadcaster: %s (%d)",
+							strerror(-err), -err);
+
+		/* mgmt_unset_controller_data() also clears broadcast data from
+		 * other clients with the same data type, so they need to be
+		 * restored. */
+		g_slist_foreach(adapter->bcast_sessions, restore_bcast_data,
+								session);
+
+		adapter->bcast_sessions =
+			g_slist_remove(adapter->bcast_sessions, session);
+
+		free_bcast_session(session);
+	}
+
+	if (adapter->bcast_sessions) {
+		err = mgmt_set_broadcaster(adapter->dev_id, TRUE);
+		if (err < 0)
+			error("Failed to set Broadcaster: %s (%d)",
+							strerror(-err), -err);
+	}
+
 	return dbus_message_new_method_return(msg);
 }
 
