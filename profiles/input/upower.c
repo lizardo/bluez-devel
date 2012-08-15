@@ -25,13 +25,62 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
+#include "gdbus.h"
+#include "log.h"
+
 #include "upower.h"
 
-int upower_init(void)
+#define UPOWER_BUS_NAME		"org.freedesktop.UPower"
+#define UPOWER_PATH		"/org/freedesktop/UPower"
+#define UPOWER_INTERFACE	UPOWER_BUS_NAME
+
+static DBusConnection *connection = NULL;
+static guint suspending_watch = 0;
+static guint resuming_watch = 0;
+
+static gboolean suspending_cb(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
 {
+	DBG("UPOWER: Suspending ...");
+
+	return TRUE;
+}
+
+static gboolean resuming_cb(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	DBG("UPOWER: Resuming ...");
+
+	return TRUE;
+}
+
+int upower_init(DBusConnection *conn)
+{
+	connection = dbus_connection_ref(conn);
+
+	suspending_watch = g_dbus_add_signal_watch(connection, UPOWER_BUS_NAME,
+						UPOWER_PATH, UPOWER_INTERFACE,
+						"Sleeping", suspending_cb,
+						NULL, NULL);
+
+	resuming_watch = g_dbus_add_signal_watch(connection, UPOWER_BUS_NAME,
+						UPOWER_PATH, UPOWER_INTERFACE,
+						"Resuming", resuming_cb,
+						NULL, NULL);
+
 	return 0;
 }
 
 void upower_exit(void)
 {
+	if (suspending_watch)
+		g_dbus_remove_watch(connection, suspending_watch);
+
+	if (resuming_watch)
+		g_dbus_remove_watch(connection, resuming_watch);
+
+	dbus_connection_unref(connection);
+	connection = NULL;
 }

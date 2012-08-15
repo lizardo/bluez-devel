@@ -21,5 +21,5 @@
  *
  */
 
-int upower_init(void);
+int upower_init(DBusConnection *conn);
 void upower_exit(void);

@@ -30,12 +30,15 @@
 #include "log.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "gdbus.h"
 
 #include "plugin.h"
 #include "hcid.h"
 #include "device.h"
 #include "upower.h"
 #include "hog_device.h"
+
+static DBusConnection *connection = NULL;
 
 static int hog_device_probe(struct btd_device *device, GSList *uuids)
 {
@@ -66,7 +69,11 @@ static int hog_manager_init(void)
 {
 	int err;
 
-	err = upower_init();
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
+
+	err = upower_init(connection);
 	if (err < 0)
 		DBG("UPower: %s(%d)", strerror(-err), -err);
 
@@ -76,6 +83,10 @@ static int hog_manager_init(void)
 static void hog_manager_exit(void)
 {
 	upower_exit();
+
+	dbus_connection_unref(connection);
+	connection = NULL;
+
 	btd_unregister_device_driver(&hog_driver);
 }
 
