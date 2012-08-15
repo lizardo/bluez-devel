@@ -40,6 +40,14 @@
 
 static DBusConnection *connection = NULL;
 
+static void suspend_event_cb(void)
+{
+}
+
+static void resume_event_cb(void)
+{
+}
+
 static int hog_device_probe(struct btd_device *device, GSList *uuids)
 {
 	const char *path = device_get_path(device);
@@ -73,7 +81,7 @@ static int hog_manager_init(void)
 	if (connection == NULL)
 		return -EIO;
 
-	err = upower_init(connection);
+	err = upower_init(connection, suspend_event_cb, resume_event_cb);
 	if (err < 0)
 		DBG("UPower: %s(%d)", strerror(-err), -err);
 

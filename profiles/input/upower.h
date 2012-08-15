@@ -21,5 +21,9 @@
  *
  */
 
-int upower_init(DBusConnection *conn);
+typedef void (*suspend_event) (void);
+typedef void (*resume_event) (void);
+
+int upower_init(DBusConnection *conn, suspend_event suspend_cb,
+					resume_event resume_cb);
 void upower_exit(void);

@@ -39,11 +39,15 @@
 static DBusConnection *connection = NULL;
 static guint suspending_watch = 0;
 static guint resuming_watch = 0;
+static suspend_event suspend_callback = NULL;
+static resume_event resume_callback = NULL;
 
 static gboolean suspending_cb(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
 	DBG("UPOWER: Suspending ...");
+
+	suspend_callback();
 
 	return TRUE;
 }
@@ -53,22 +57,33 @@ static gboolean resuming_cb(DBusConnection *conn, DBusMessage *msg,
 {
 	DBG("UPOWER: Resuming ...");
 
+	resume_callback();
+
 	return TRUE;
 }
 
-int upower_init(DBusConnection *conn)
+int upower_init(DBusConnection *conn, suspend_event suspend_cb,
+					resume_event resume_cb)
 {
 	connection = dbus_connection_ref(conn);
 
-	suspending_watch = g_dbus_add_signal_watch(connection, UPOWER_BUS_NAME,
+	if (suspend_cb) {
+		suspending_watch = g_dbus_add_signal_watch(connection,
+						UPOWER_BUS_NAME,
 						UPOWER_PATH, UPOWER_INTERFACE,
 						"Sleeping", suspending_cb,
 						NULL, NULL);
+		suspend_callback = suspend_cb;
+	}
 
-	resuming_watch = g_dbus_add_signal_watch(connection, UPOWER_BUS_NAME,
+	if (resume_cb) {
+		resuming_watch = g_dbus_add_signal_watch(connection,
+						UPOWER_BUS_NAME,
 						UPOWER_PATH, UPOWER_INTERFACE,
 						"Resuming", resuming_cb,
 						NULL, NULL);
+		resume_callback = resume_cb;
+	}
 
 	return 0;
 }
