@@ -184,7 +184,8 @@ endif
 if HOGPLUGIN
 builtin_modules += hog
 builtin_sources += profiles/input/hog_manager.c profiles/input/hog_device.h \
-			profiles/input/hog_device.c profiles/input/uhid_copy.h
+			profiles/input/hog_device.c profiles/input/uhid_copy.h \
+			profiles/input/upower.c profiles/input/upower.h
 endif
 
 if NETWORKPLUGIN

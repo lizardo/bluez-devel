@@ -34,6 +34,7 @@
 #include "plugin.h"
 #include "hcid.h"
 #include "device.h"
+#include "upower.h"
 #include "hog_device.h"
 
 static int hog_device_probe(struct btd_device *device, GSList *uuids)
@@ -63,11 +64,18 @@ static struct btd_device_driver hog_driver = {
 
 static int hog_manager_init(void)
 {
+	int err;
+
+	err = upower_init();
+	if (err < 0)
+		DBG("UPower: %s(%d)", strerror(-err), -err);
+
 	return btd_register_device_driver(&hog_driver);
 }
 
 static void hog_manager_exit(void)
 {
+	upower_exit();
 	btd_unregister_device_driver(&hog_driver);
 }
 
