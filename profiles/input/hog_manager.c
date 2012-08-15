@@ -41,12 +41,26 @@
 static DBusConnection *connection = NULL;
 static GSList *devices = NULL;
 
+static void set_suspend(gpointer data, gpointer user_data)
+{
+	struct hog_device *hogdev = data;
+	gboolean suspend = GPOINTER_TO_INT(user_data);
+
+	hog_device_set_control_point(hogdev, suspend);
+}
+
 static void suspend_event_cb(void)
 {
+	gboolean suspend = TRUE;
+
+	g_slist_foreach(devices, set_suspend, GINT_TO_POINTER(suspend));
 }
 
 static void resume_event_cb(void)
 {
+	gboolean suspend = FALSE;
+
+	g_slist_foreach(devices, set_suspend, GINT_TO_POINTER(suspend));
 }
 
 static int hog_device_probe(struct btd_device *device, GSList *uuids)
