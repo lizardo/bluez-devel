@@ -69,6 +69,8 @@
 
 #define APPEARANCE_CHR_UUID 0x2a01
 
+#define AUTO_CONNECTION_INTERVAL	5 /* Next connection attempt */
+
 struct btd_disconnect_data {
 	guint id;
 	disconnect_watch watch;
@@ -104,6 +106,12 @@ struct browse_req {
 	int search_uuid;
 	int reconnect_attempt;
 	guint listener_id;
+};
+
+struct included_search {
+	struct browse_req *req;
+	GSList *services;
+	GSList *current;
 };
 
 struct attio_data {
@@ -1432,7 +1440,7 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
 }
 
-static void services_changed(struct btd_device *device)
+static void uuids_changed(struct btd_device *device)
 {
 	DBusConnection *conn = get_dbus_connection();
 	char **uuids;
@@ -1457,7 +1465,7 @@ static int rec_cmp(const void *a, const void *b)
 	return r1->handle - r2->handle;
 }
 
-static void update_services(struct browse_req *req, sdp_list_t *recs)
+static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -1555,6 +1563,46 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 	}
 }
 
+static gint primary_cmp(gconstpointer a, gconstpointer b)
+{
+	return memcmp(a, b, sizeof(struct gatt_primary));
+}
+
+static void update_gatt_services(struct browse_req *req, GSList *current,
+								GSList *found)
+{
+	GSList *l, *lmatch, *left = g_slist_copy(current);
+
+	/* Added Profiles */
+	for (l = found; l; l = g_slist_next(l)) {
+		struct gatt_primary *prim = l->data;
+
+		/* Entry found ? */
+		lmatch = g_slist_find_custom(current, prim, primary_cmp);
+		if (lmatch) {
+			left = g_slist_remove(left, lmatch->data);
+			continue;
+		}
+
+		/* New entry */
+		req->profiles_added = g_slist_append(req->profiles_added,
+							g_strdup(prim->uuid));
+
+		DBG("UUID Added: %s", prim->uuid);
+	}
+
+	/* Removed Profiles */
+	for (l = left; l; l = g_slist_next(l)) {
+		struct gatt_primary *prim = l->data;
+		req->profiles_removed = g_slist_append(req->profiles_removed,
+							g_strdup(prim->uuid));
+
+		DBG("UUID Removed: %s", prim->uuid);
+	}
+
+	g_slist_free(left);
+}
+
 static void store_profiles(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
@@ -1641,7 +1689,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto send_reply;
 	}
 
-	update_services(req, recs);
+	update_bredr_services(req, recs);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,
@@ -1672,7 +1720,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		device_remove_drivers(device, req->profiles_removed);
 
 	/* Propagate services changes */
-	services_changed(req->device);
+	uuids_changed(req->device);
 
 send_reply:
 	if (!req->msg)
@@ -1729,7 +1777,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 			goto done;
 	}
 
-	update_services(req, recs);
+	update_bredr_services(req, recs);
 
 	adapter_get_address(adapter, &src);
 
@@ -1849,99 +1897,129 @@ done:
 	return FALSE;
 }
 
-static void appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
-							gpointer user_data)
+static void device_unregister_services(struct btd_device *device)
 {
-	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device->adapter;
-	struct att_data_list *list =  NULL;
-	uint16_t app;
-	bdaddr_t src;
-	uint8_t *atval;
+	attrib_client_unregister(device->services);
+	g_slist_free_full(device->services, g_free);
+	device->services = NULL;
+}
 
-	if (status != 0) {
-		DBG("Read characteristics by UUID failed: %s\n",
-							att_ecode2str(status));
-		goto done;
-	}
+static void register_all_services(struct browse_req *req, GSList *services)
+{
+	struct btd_device *device = req->device;
 
-	list = dec_read_by_type_resp(pdu, plen);
-	if (list == NULL)
-		goto done;
+	device_set_temporary(device, FALSE);
 
-	if (list->len != 4) {
-		DBG("Appearance value: invalid data");
-		goto done;
-	}
+	if (device->services)
+		device_unregister_services(device);
 
-	/* A device shall have only one instance of the
-	Appearance characteristic. */
-	atval = list->data[0] + 2; /* skip handle value */
-	app = att_get_u16(atval);
+	update_gatt_services(req, device->primaries, services);
+	g_slist_free_full(device->primaries, g_free);
+	device->primaries = NULL;
 
-	adapter_get_address(adapter, &src);
-	write_remote_appearance(&src, &device->bdaddr, device->bdaddr_type,
-									app);
+	device_register_services(req->conn, device, g_slist_copy(services), -1);
+	if (req->profiles_removed)
+		device_remove_drivers(device, req->profiles_removed);
 
-done:
-	att_data_list_free(list);
+	device_probe_drivers(device, req->profiles_added);
+
 	if (device->attios == NULL && device->attios_offline == NULL)
 		attio_cleanup(device);
+
+	uuids_changed(device);
+	if (req->msg)
+		create_device_reply(device, req);
+
+	store_services(device);
+
+	device->browse = NULL;
+	browse_request_free(req);
+}
+
+static int service_by_range_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const struct att_range *range = b;
+
+	return memcmp(&prim->range, range, sizeof(*range));
+}
+
+static void find_included_cb(GSList *includes, uint8_t status,
+						gpointer user_data)
+{
+	struct included_search *search = user_data;
+	struct btd_device *device = search->req->device;
+	struct gatt_primary *prim;
+	GSList *l;
+
+	if (includes == NULL)
+		goto done;
+
+	for (l = includes; l; l = l->next) {
+		struct gatt_included *incl = l->data;
+
+		if (g_slist_find_custom(search->services, &incl->range,
+						service_by_range_cmp))
+			continue;
+
+		prim = g_new0(struct gatt_primary, 1);
+		memcpy(prim->uuid, incl->uuid, sizeof(prim->uuid));
+		memcpy(&prim->range, &incl->range, sizeof(prim->range));
+
+		search->services = g_slist_append(search->services, prim);
+	}
+
+done:
+	search->current = search->current->next;
+	if (search->current == NULL) {
+		register_all_services(search->req, search->services);
+		g_slist_free(search->services);
+		g_free(search);
+		return;
+	}
+
+	prim = search->current->data;
+	gatt_find_included(device->attrib, prim->range.start, prim->range.end,
+					find_included_cb, search);
+}
+
+static void find_included_services(struct browse_req *req, GSList *services)
+{
+	struct btd_device *device = req->device;
+	struct included_search *search;
+	struct gatt_primary *prim;
+
+	search = g_new0(struct included_search, 1);
+	search->req = req;
+	search->services = g_slist_copy(services);
+	search->current = search->services;
+
+	prim = search->current->data;
+	gatt_find_included(device->attrib, prim->range.start, prim->range.end,
+					find_included_cb, search);
+
 }
 
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 {
 	struct browse_req *req = user_data;
-	struct btd_device *device = req->device;
-	struct gatt_primary *gap_prim = NULL;
-	GSList *l, *uuids = NULL;
 
 	if (status) {
+		struct btd_device *device = req->device;
+
 		if (req->msg) {
 			DBusMessage *reply;
 			reply = btd_error_failed(req->msg,
 							att_ecode2str(status));
 			g_dbus_send_message(req->conn, reply);
 		}
-		goto done;
+
+		device->browse = NULL;
+		browse_request_free(req);
+		return;
 	}
 
-	device_set_temporary(device, FALSE);
-
-	for (l = services; l; l = l->next) {
-		struct gatt_primary *prim = l->data;
-
-		if (strcmp(prim->uuid, GAP_UUID) == 0)
-			gap_prim = prim;
-
-		uuids = g_slist_append(uuids, prim->uuid);
-	}
-
-	device_register_services(req->conn, device, g_slist_copy(services), -1);
-	device_probe_drivers(device, uuids);
-
-	if (gap_prim) {
-		/* Read appearance characteristic */
-		bt_uuid_t uuid;
-
-		bt_uuid16_create(&uuid, APPEARANCE_CHR_UUID);
-
-		gatt_read_char_by_uuid(device->attrib, gap_prim->range.start,
-			gap_prim->range.end, &uuid, appearance_cb, device);
-	} else if (device->attios == NULL && device->attios_offline == NULL)
-		attio_cleanup(device);
-
-	g_slist_free(uuids);
-
-	services_changed(device);
-	if (req->msg)
-		create_device_reply(device, req);
-
-	store_services(device);
-
-done:
-	device->browse = NULL;
-	browse_request_free(req);
+	find_included_services(req, services);
 }
 
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
@@ -2091,14 +2169,6 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 
 	if (device->browse)
 		return -EBUSY;
-
-	/* FIXME: GATT service updates (implemented in update_services() for
-	 * SDP) are not supported yet. It will be supported once client side
-	 * "Services Changed" characteristic handling is implemented. */
-	if (device->primaries) {
-		error("Could not update GATT services");
-		return -ENOSYS;
-	}
 
 	req = g_new0(struct browse_req, 1);
 	req->device = btd_device_ref(device);
@@ -2966,6 +3036,21 @@ GSList *btd_device_get_primaries(struct btd_device *device)
 	return device->primaries;
 }
 
+void btd_device_gatt_set_service_changed(struct btd_device *device,
+						uint16_t start, uint16_t end)
+{
+	GSList *l;
+
+	for (l = device->primaries; l; l = g_slist_next(l)) {
+		struct gatt_primary *prim = l->data;
+
+		if (start <= prim->range.end && end >= prim->range.start)
+			prim->changed = TRUE;
+	}
+
+	device_browse_primary(device, NULL, NULL, FALSE);
+}
+
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 {
 	GSList *uuid_list;
@@ -2984,7 +3069,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	g_slist_free(uuid_list);
 
 	store_profiles(device);
-	services_changed(device);
+	uuids_changed(device);
 }
 
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
@@ -3056,9 +3141,51 @@ void btd_device_unref(struct btd_device *device)
 void device_set_class(struct btd_device *device, uint32_t value)
 {
 	DBusConnection *conn = get_dbus_connection();
+	const char *icon = class_to_icon(value);
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &value);
+
+	if (icon)
+		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+					"Icon", DBUS_TYPE_STRING, &icon);
+}
+
+int device_get_appearance(struct btd_device *device, uint16_t *value)
+{
+	bdaddr_t src;
+	uint16_t app;
+	int err;
+
+	adapter_get_address(device_get_adapter(device), &src);
+
+	err = read_remote_appearance(&src, &device->bdaddr,
+						device->bdaddr_type, &app);
+	if (err < 0)
+		return err;
+
+	if (value)
+		*value = app;
+
+	return 0;
+}
+
+void device_set_appearance(struct btd_device *device, uint16_t value)
+{
+	DBusConnection *conn = get_dbus_connection();
+	const char *icon = gap_appearance_to_icon(value);
+	bdaddr_t src;
+
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+				"Appearance", DBUS_TYPE_UINT16, &value);
+
+	if (icon)
+		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+					"Icon", DBUS_TYPE_STRING, &icon);
+
+	adapter_get_address(device_get_adapter(device), &src);
+	write_remote_appearance(&src, &device->bdaddr, device->bdaddr_type,
+									value);
 }
 
 static gboolean notify_attios(gpointer user_data)
