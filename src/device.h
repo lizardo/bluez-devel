@@ -45,6 +45,7 @@ uint16_t btd_device_get_product(struct btd_device *device);
 uint16_t btd_device_get_version(struct btd_device *device);
 void device_remove(struct btd_device *device, gboolean remove_stored);
 gint device_address_cmp(struct btd_device *device, const gchar *address);
+gint device_bdaddr_cmp(struct btd_device *device, bdaddr_t *bdaddr);
 int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 				DBusMessage *msg, gboolean secure);
 int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
@@ -129,3 +130,5 @@ void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 
 void device_add_battery(struct btd_device *device, char *path);
 void device_remove_battery(struct btd_device *device, char *path);
+
+GIOChannel *device_att_connect(gpointer user_data);

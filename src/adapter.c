@@ -132,8 +132,12 @@ struct btd_adapter {
 	GSList *devices;		/* Devices structure pointers */
 	GSList *mode_sessions;		/* Request Mode sessions */
 	GSList *disc_sessions;		/* Discovery sessions */
+	struct session_req *scanning_session;
+	GSList *connect_list;		/* Devices to connect when found */
+	GSList *connecting_list;	/* Pending connects */
 	guint discov_id;		/* Discovery timer */
 	gboolean discovering;		/* Discovery active */
+	gboolean connecting;		/* Connect active */
 	gboolean discov_suspended;	/* Discovery suspended */
 	guint auto_timeout_id;		/* Automatic connections timeout */
 	sdp_list_t *services;		/* Services associated to adapter */
@@ -217,18 +221,19 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 					DBusConnection *conn, DBusMessage *msg,
 					uint8_t mode, GDBusWatchFunction cb)
 {
-	const char *sender = dbus_message_get_sender(msg);
+	const char *sender;
 	struct session_req *req;
 
 	req = g_new0(struct session_req, 1);
 	req->adapter = adapter;
-	req->conn = dbus_connection_ref(conn);
-	req->msg = dbus_message_ref(msg);
 	req->mode = mode;
 
-	if (cb == NULL)
+	if (conn == NULL || cb == NULL || msg == NULL)
 		return session_ref(req);
 
+	req->conn = dbus_connection_ref(conn);
+	req->msg = dbus_message_ref(msg);
+	sender = dbus_message_get_sender(msg);
 	req->owner = g_strdup(sender);
 	req->id = g_dbus_add_disconnect_watch(conn, sender, cb, req, NULL);
 
@@ -440,7 +445,9 @@ static struct session_req *find_session(GSList *list, const char *sender)
 	for (; list; list = list->next) {
 		struct session_req *req = list->data;
 
-		if (g_str_equal(req->owner, sender))
+		/* req->owner may be NULL if the session has been added by the
+		 * daemon itself, so we use g_strcmp0 instead of g_str_equal */
+		if (g_strcmp0(req->owner, sender) == 0)
 			return req;
 	}
 
@@ -515,7 +522,7 @@ static void session_remove(struct session_req *req)
 	struct btd_adapter *adapter = req->adapter;
 
 	/* Ignore set_mode session */
-	if (req->owner == NULL)
+	if (req->owner == NULL && adapter->pending_mode)
 		return;
 
 	DBG("%s session %p with %s deactivated",
@@ -1002,13 +1009,14 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 static gboolean discovery_cb(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	int err;
 
 	adapter->discov_id = 0;
 
-	err = mgmt_start_discovery(adapter->dev_id);
-	if (err < 0)
-		error("start_discovery: %s (%d)", strerror(-err), -err);
+	if (adapter->scanning_session &&
+			(g_slist_length(adapter->disc_sessions) == 1))
+		mgmt_start_scanning(adapter->dev_id);
+	else
+		mgmt_start_discovery(adapter->dev_id);
 
 	return FALSE;
 }
@@ -2098,6 +2106,14 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
+static void set_auto_connect(gpointer data, gpointer user_data)
+{
+	struct btd_device *device = data;
+	gboolean enable = GPOINTER_TO_INT(user_data);
+
+	device_set_auto_connect(device, enable);
+}
+
 static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 						gboolean powered)
 {
@@ -2107,7 +2123,10 @@ static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 		btd_adapter_powered_cb cb = l->data;
 
 		cb(adapter, powered);
-       }
+	}
+
+	g_slist_foreach(adapter->devices, set_auto_connect,
+						GINT_TO_POINTER(powered));
 }
 
 static void emit_device_disappeared(gpointer data, gpointer user_data)
@@ -2174,8 +2193,49 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	return adapter->name;
 }
 
+void adapter_connect_list_add(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	struct session_req *req;
+
+	if (g_slist_find(adapter->connect_list, device)) {
+		DBG("trying to add device %s which is already in the connect "
+				"list, ignoring", device_get_path(device));
+		return;
+	}
+
+	adapter->connect_list = g_slist_append(adapter->connect_list, device);
+	DBG("%s added to %s's connect_list", device_get_path(device),
+								adapter->name);
+
+	if (!adapter->up)
+		return;
+
+	if (adapter->off_requested)
+		return;
+
+	if (adapter->scanning_session)
+		return;
+
+	if (adapter->disc_sessions == NULL)
+		adapter->discov_id = g_idle_add(discovery_cb, adapter);
+
+	req = create_session(adapter, NULL, NULL, 0, NULL);
+	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
+	adapter->scanning_session = req;
+}
+
+void adapter_connect_list_remove(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
+	DBG("%s removed from %s's connect_list", device_get_path(device),
+								adapter->name);
+}
+
 void btd_adapter_start(struct btd_adapter *adapter)
 {
+	struct session_req *req;
 	char address[18];
 	gboolean powered;
 
@@ -2201,6 +2261,16 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	call_adapter_powered_callbacks(adapter, TRUE);
 
 	info("Adapter %s has been enabled", adapter->path);
+
+	if (g_slist_length(adapter->connect_list) == 0 ||
+					adapter->disc_sessions)
+		return;
+
+	req = create_session(adapter, NULL, NULL, 0, NULL);
+	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
+	adapter->scanning_session = req;
+
+	adapter->discov_id = g_idle_add(discovery_cb, adapter);
 }
 
 static void reply_pending_requests(struct btd_adapter *adapter)
@@ -2514,6 +2584,7 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering)
 {
 	const char *path = adapter->path;
+	guint connect_list_size;
 
 	adapter->discovering = discovering;
 
@@ -2528,13 +2599,24 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 	g_slist_free_full(adapter->oor_devices, dev_info_free);
 	adapter->oor_devices = g_slist_copy(adapter->found_devices);
 
-	if (!adapter_has_discov_sessions(adapter) || adapter->discov_suspended)
+	if (adapter->discov_suspended)
 		return;
 
-	DBG("hci%u restarting discovery, disc_sessions %u", adapter->dev_id,
-					g_slist_length(adapter->disc_sessions));
+	connect_list_size = g_slist_length(adapter->connect_list);
 
-	adapter->discov_id = g_idle_add(discovery_cb, adapter);
+	if (connect_list_size == 0 && adapter->scanning_session) {
+		session_unref(adapter->scanning_session);
+		adapter->scanning_session = NULL;
+	}
+
+	if (adapter_has_discov_sessions(adapter)) {
+		adapter->discov_id = g_idle_add(discovery_cb, adapter);
+
+		DBG("hci%u restarting discovery: disc_sessions %u",
+				adapter->dev_id,
+				g_slist_length(adapter->disc_sessions));
+		return;
+	}
 }
 
 static void suspend_discovery(struct btd_adapter *adapter)
@@ -2838,6 +2920,47 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer,
 	return textfile_get(filename, key);
 }
 
+static gboolean clean_connecting_state(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	struct btd_device *device = user_data;
+	struct btd_adapter *adapter = device_get_adapter(device);
+
+	adapter->connecting_list = g_slist_remove(adapter->connecting_list,
+								device);
+
+	adapter->connecting = FALSE;
+
+	if (!g_slist_length(adapter->connecting_list) &&
+					g_slist_length(adapter->connect_list))
+		adapter->discov_id = g_idle_add(discovery_cb, adapter);
+
+	btd_device_unref(device);
+
+	return FALSE;
+}
+
+static gboolean connect_pending_cb(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	GIOChannel *io;
+
+	/* in the future we may want to check here if the controller supports
+	 * scanning and connecting at the same time */
+	if (adapter->discovering)
+		return TRUE;
+
+	if (adapter->connecting)
+		return TRUE;
+
+	adapter->connecting = TRUE;
+	io = device_att_connect(device);
+	g_io_add_watch(io, G_IO_OUT | G_IO_ERR, clean_connecting_state,
+						btd_device_ref(device));
+
+	return FALSE;
+}
+
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, uint8_t confirm_name,
@@ -2849,6 +2972,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	gboolean legacy, name_known;
 	uint32_t dev_class;
 	int err;
+	GSList *l;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = eir_parse(&eir_data, data, data_len);
@@ -2871,7 +2995,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 								eir_data.name);
 
 	dev = adapter_search_found_devices(adapter, bdaddr);
-	if (dev) {
+	if (dev && dev->bdaddr_type == BDADDR_BREDR) {
 		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 							dev);
 
@@ -2922,6 +3046,27 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	free(alias);
 
 	adapter->found_devices = g_slist_prepend(adapter->found_devices, dev);
+
+	if (bdaddr_type == BDADDR_LE_PUBLIC ||
+					bdaddr_type == BDADDR_LE_RANDOM) {
+		struct btd_device *device;
+
+		l = g_slist_find_custom(adapter->connect_list, bdaddr,
+					(GCompareFunc) device_bdaddr_cmp);
+		if (!l)
+			goto done;
+
+		device = l->data;
+		adapter_connect_list_remove(adapter, device);
+		l = g_slist_find(adapter->connecting_list, device);
+		if (l)
+			goto done;
+
+		g_idle_add(connect_pending_cb, device);
+		adapter->connecting_list = g_slist_append(
+					adapter->connecting_list, device);
+		stop_discovery(adapter);
+	}
 
 done:
 	dev->rssi = rssi;
@@ -3318,15 +3463,10 @@ static gboolean disable_auto(gpointer user_data)
 	return FALSE;
 }
 
-static void set_auto_connect(gpointer data, gpointer user_data)
-{
-	struct btd_device *device = data;
-
-	device_set_auto_connect(device, TRUE);
-}
-
 void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
 {
+	gboolean enable = TRUE;
+
 	if (!adapter->up)
 		return;
 
@@ -3335,7 +3475,8 @@ void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
 	if (adapter->auto_timeout_id)
 		return;
 
-	g_slist_foreach(adapter->devices, set_auto_connect, NULL);
+	g_slist_foreach(adapter->devices, set_auto_connect,
+						GINT_TO_POINTER(enable));
 
 	adapter->auto_timeout_id = g_timeout_add_seconds(main_opts.autoto,
 						disable_auto, adapter);

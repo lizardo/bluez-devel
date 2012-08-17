@@ -67,8 +67,6 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
-#define AUTO_CONNECTION_INTERVAL	5 /* Next connection attempt */
-
 #define APPEARANCE_CHR_UUID 0x2a01
 
 struct btd_disconnect_data {
@@ -1246,6 +1244,11 @@ gint device_address_cmp(struct btd_device *device, const gchar *address)
 	return strcasecmp(addr, address);
 }
 
+gint device_bdaddr_cmp(struct btd_device *device, bdaddr_t *bdaddr)
+{
+	return bacmp(&device->bdaddr, bdaddr);
+}
+
 static gboolean record_has_uuid(const sdp_record_t *rec,
 				const char *profile_uuid)
 {
@@ -1811,15 +1814,6 @@ static void attio_disconnected(gpointer data, gpointer user_data)
 		attio->dcfunc(attio->user_data);
 }
 
-static void att_connect_dispatched(gpointer user_data)
-{
-	struct btd_device *device = user_data;
-
-	device->auto_id = 0;
-}
-
-static gboolean att_connect(gpointer user_data);
-
 static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1836,13 +1830,18 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
-	if (device->auto_connect == FALSE || err != ETIMEDOUT)
+	if (device->auto_connect == FALSE) {
+		DBG("Automatic connection disabled");
 		goto done;
+	}
 
-	device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT_IDLE,
-						AUTO_CONNECTION_INTERVAL,
-						att_connect, device,
-						att_connect_dispatched);
+	/*
+	 * Keep scanning/re-connection active if disconnection reason
+	 * is page timeout, remote user terminated connection or local
+	 * initiated disconnection.
+	 */
+	if (err == ETIMEDOUT || err == ECONNRESET || err == ECONNABORTED)
+		adapter_connect_list_add(device_get_adapter(device), device);
 
 done:
 	attio_cleanup(device);
@@ -1983,14 +1982,13 @@ static void att_error_cb(const GError *gerr, gpointer user_data)
 	struct att_callbacks *attcb = user_data;
 	struct btd_device *device = attcb->user_data;
 
+	if (gerr->code == ECONNABORTED)
+		return;
+
 	if (device->auto_connect == FALSE)
 		return;
 
-	device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT_IDLE,
-						AUTO_CONNECTION_INTERVAL,
-						att_connect, device,
-						att_connect_dispatched);
-
+	adapter_connect_list_add(device_get_adapter(device), device);
 	DBG("Enabling automatic connections");
 }
 
@@ -2005,7 +2003,7 @@ static void att_success_cb(gpointer user_data)
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
 
-static gboolean att_connect(gpointer user_data)
+GIOChannel *device_att_connect(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;
@@ -2053,7 +2051,7 @@ static gboolean att_connect(gpointer user_data)
 
 	device->att_io = io;
 
-	return FALSE;
+	return io;
 }
 
 static void att_browse_error_cb(const GError *gerr, gpointer user_data)
@@ -2275,6 +2273,9 @@ void device_set_temporary(struct btd_device *device, gboolean temporary)
 
 	DBG("temporary %d", temporary);
 
+	if (temporary)
+		adapter_connect_list_remove(device_get_adapter(device), device);
+
 	device->temporary = temporary;
 }
 
@@ -2290,6 +2291,7 @@ void device_set_bonded(struct btd_device *device, gboolean bonded)
 
 void device_set_auto_connect(struct btd_device *device, gboolean enable)
 {
+	struct btd_adapter *adapter = device_get_adapter(device);
 	char addr[18];
 
 	if (!device)
@@ -2303,14 +2305,9 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 	/* Disabling auto connect */
 	if (enable == FALSE) {
-		if (device->auto_id)
-			g_source_remove(device->auto_id);
+		adapter_connect_list_remove(adapter, device);
 		return;
 	}
-
-	/* Enabling auto connect */
-	if (device->auto_id != 0)
-		return;
 
 	if (device->attrib) {
 		DBG("Already connected");
@@ -2320,9 +2317,8 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	if (device->attios == NULL && device->attios_offline == NULL)
 		return;
 
-	device->auto_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-						att_connect, device,
-						att_connect_dispatched);
+	/* Enabling auto connect */
+	adapter_connect_list_add(adapter, device);
 }
 
 static gboolean start_discovery(gpointer user_data)
@@ -3104,10 +3100,7 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 
 	device->attios = g_slist_append(device->attios, attio);
 
-	if (device->auto_id == 0)
-		device->auto_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-						att_connect, device,
-						att_connect_dispatched);
+	adapter_connect_list_add(device_get_adapter(device), device);
 
 	return attio->id;
 }
