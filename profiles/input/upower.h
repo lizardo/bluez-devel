@@ -2,7 +2,6 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2012  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2012  Instituto Nokia de Tecnologia - INdT
  *
  *
@@ -22,12 +21,9 @@
  *
  */
 
-#define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
+typedef void (*suspend_event) (void);
+typedef void (*resume_event) (void);
 
-struct hog_device;
-
-struct hog_device *hog_device_register(struct btd_device *device,
-						const char *path, int *perr);
-int hog_device_unregister(struct hog_device *hogdev);
-struct hog_device *hog_device_find(GSList *list, const char *path);
-int hog_device_set_control_point(struct hog_device *hogdev, gboolean suspend);
+int upower_init(DBusConnection *conn, suspend_event suspend_cb,
+					resume_event resume_cb);
+void upower_exit(void);
