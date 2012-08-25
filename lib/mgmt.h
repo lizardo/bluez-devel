@@ -92,6 +92,7 @@ struct mgmt_rp_read_index_list {
 #define MGMT_SETTING_BREDR		0x00000080
 #define MGMT_SETTING_HS			0x00000100
 #define MGMT_SETTING_LE			0x00000200
+#define MGMT_SETTING_BROADCASTER	0x00000400
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
@@ -334,6 +335,8 @@ struct mgmt_cp_unset_controller_data {
 	uint8_t data_type;
 } __packed;
 
+#define MGMT_OP_SET_BROADCASTER		0x002B
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -507,6 +510,7 @@ static const char *mgmt_op[] = {
 	"Set Device ID",
 	"Set Controller Data",
 	"Unset Controller Data",
+	"Set Broadcaster",
 };
 
 static const char *mgmt_ev[] = {
