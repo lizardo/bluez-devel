@@ -2,8 +2,8 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2012  Nokia Corporation
  *  Copyright (C) 2012  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2012  Instituto Nokia de Tecnologia - INdT
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,41 +22,16 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+struct att_notif_ind;
 
-#include <stdbool.h>
+typedef void (*att_confirm_cb) (struct att_notif_ind *notif_ind,
+				struct btd_device *device, void *user_data);
 
-#include "manager.h"
-#include "adapter.h"
-#include "device.h"
-#include "profile.h"
-#include "server.h"
-#include "notify.h"
-
-struct btd_profile time_profile = {
-	.name		= "gatt-time-server",
-	.adapter_probe	= time_server_init,
-	.adapter_remove	= time_server_exit,
-};
-
-int time_manager_init(void)
-{
-	int err;
-
-	err = monitor_rtc_init();
-	if (err < 0)
-		return err;
-
-	btd_profile_register(&time_profile);
-
-	return 0;
-}
-
-void time_manager_exit(void)
-{
-	btd_profile_unregister(&time_profile);
-
-	monitor_rtc_exit();
-}
+struct att_notif_ind *att_create_notif_ind(struct btd_adapter *adapter,
+							uint16_t value_handle,
+							uint16_t ccc_handle);
+void att_destroy_notif_inds(struct btd_adapter *adapter);
+int att_send_notification(struct att_notif_ind *notif_ind, const uint8_t *value,
+								size_t len);
+int att_send_indication(struct att_notif_ind *notif_ind, const uint8_t *value,
+				size_t len, att_confirm_cb cb, void *user_data);

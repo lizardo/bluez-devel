@@ -43,3 +43,4 @@ enum {
 
 int time_server_init(struct btd_profile *p, struct btd_adapter *adapter);
 void time_server_exit(struct btd_profile *p, struct btd_adapter *adapter);
+void time_server_notify_current_time(void);

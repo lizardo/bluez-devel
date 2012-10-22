@@ -223,7 +223,8 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/alert/manager.c \
 			profiles/time/main.c profiles/time/server.h \
 			profiles/time/server.c profiles/time/manager.c \
-			profiles/time/manager.h \
+			profiles/time/manager.h profiles/time/notify.c \
+			profiles/time/notify.h \
 			plugins/gatt-example.c \
 			profiles/proximity/main.c profiles/proximity/manager.h \
 			profiles/proximity/manager.c \

@@ -54,6 +54,8 @@
 #define TIME_UPDATE_STAT_CHR_UUID	0x2A17
 #define CT_TIME_CHR_UUID		0x2A2B
 
+GSList *notif_inds = NULL;
+
 static int encode_current_time(uint8_t value[10])
 {
 	struct timespec tp;
@@ -86,6 +88,10 @@ static int encode_current_time(uint8_t value[10])
 	value[9] = 0x00; /* Adjust Reason */
 
 	return 0;
+}
+
+void time_server_notify_current_time(void)
+{
 }
 
 static uint8_t current_time_read(struct attribute *a,
@@ -127,18 +133,22 @@ static uint8_t local_time_info_read(struct attribute *a,
 
 static gboolean register_current_time_service(struct btd_adapter *adapter)
 {
+	uint16_t value_handle, ccc_handle;
+	struct att_notif_ind *notif_ind;
 	bt_uuid_t uuid;
 
 	bt_uuid16_create(&uuid, CURRENT_TIME_SVC_UUID);
 
 	/* Current Time service */
-	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
+	if (!gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
 				/* CT Time characteristic */
 				GATT_OPT_CHR_UUID, CT_TIME_CHR_UUID,
 				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
 							ATT_CHAR_PROPER_NOTIFY,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						current_time_read, adapter,
+				GATT_OPT_CHR_VALUE_GET_HANDLE, &value_handle,
+				GATT_OPT_CCC_GET_HANDLE, &ccc_handle,
 
 				/* Local Time Information characteristic */
 				GATT_OPT_CHR_UUID, LOCAL_TIME_INFO_CHR_UUID,
@@ -146,7 +156,11 @@ static gboolean register_current_time_service(struct btd_adapter *adapter)
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 						local_time_info_read, adapter,
 
-				GATT_OPT_INVALID);
+				GATT_OPT_INVALID))
+		return FALSE;
+
+	notif_ind = att_create_notif_ind(adapter, value_handle, ccc_handle);
+	notif_inds = g_slist_append(notif_inds, notif_ind);
 }
 
 static uint8_t time_update_control(struct attribute *a,
@@ -236,4 +250,6 @@ void time_server_exit(struct btd_profile *p, struct btd_adapter *adapter)
 	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
+
+	att_destroy_notif_inds(adapter);
 }
