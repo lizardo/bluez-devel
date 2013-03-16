@@ -23,5 +23,6 @@
 
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_BLUE	"\x1B[0;34m"
+#define COLOR_ERROR	"\x1B[0;31m"
 
 void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
