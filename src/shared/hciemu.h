@@ -39,7 +39,7 @@ void hciemu_unref(struct hciemu *hciemu);
 
 const char *hciemu_get_address(struct hciemu *hciemu);
 
-typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
+typedef bool (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 						uint8_t len, void *user_data);
 
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
