@@ -26,7 +26,7 @@ monitor_btmon_LDADD = lib/libbluetooth-private.la
 endif
 
 if EXPERIMENTAL
-noinst_PROGRAMS += emulator/btvirt emulator/b1ee \
+noinst_PROGRAMS += emulator/btvirt emulator/b1ee tools/conn-tester \
 					tools/mgmt-tester tools/gap-tester
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
@@ -37,6 +37,15 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 					emulator/bthost.h emulator/bthost.c
 
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
+
+tools_conn_tester_SOURCES = tools/conn-tester.c monitor/bt.h \
+				emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
+				src/shared/tester.h src/shared/tester.c
+tools_conn_tester_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
