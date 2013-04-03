@@ -88,6 +88,7 @@ struct btdev {
 	uint8_t  le_event_mask[8];
 	uint8_t  le_adv_data[31];
 	uint8_t  le_adv_data_len;
+	uint8_t  le_adv_enable;
 };
 
 #define MAX_BTDEV_ENTRIES 16
@@ -706,6 +707,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
+	const struct bt_hci_cmd_le_set_adv_enable *lsae;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -1277,6 +1279,20 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lratp.status = BT_HCI_ERR_SUCCESS;
 		lratp.level = 0;
 		cmd_complete(btdev, opcode, &lratp, sizeof(lratp));
+		break;
+
+	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		lsae = data;
+		printf("le adv enable: %i\n", lsae->enable);
+		if (btdev->le_adv_enable == lsae->enable)
+			status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		else {
+			btdev->le_adv_enable = lsae->enable;
+			status = BT_HCI_ERR_SUCCESS;
+		}
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_SET_SCAN_PARAMETERS:
