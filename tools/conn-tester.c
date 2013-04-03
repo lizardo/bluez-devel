@@ -46,6 +46,11 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
 
+enum {
+	CONNECTING,
+	CLOSING,
+};
+
 struct test_data {
 	const void *test_data;
 	uint32_t initial_settings;
@@ -54,8 +59,10 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	int unmet_conditions;
+	unsigned int timeout_id;
 	int sk;
 	bdaddr_t bdaddr;
+	int state;
 };
 
 #define CID 4
@@ -184,6 +191,26 @@ static void test_post_teardown(const void *test_data)
 	data->hciemu = NULL;
 }
 
+static void test_add_condition(struct test_data *data)
+{
+	data->unmet_conditions++;
+
+	tester_print("Test condition added, total %d", data->unmet_conditions);
+}
+
+static void test_condition_complete(struct test_data *data)
+{
+	data->unmet_conditions--;
+
+	tester_print("Test condition complete, %d left",
+						data->unmet_conditions);
+
+	if (data->unmet_conditions > 0)
+		return;
+
+	tester_test_passed();
+}
+
 static void setup_connection(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -216,11 +243,103 @@ static void setup_connection(const void *test_data)
 	return;
 }
 
+static gboolean test_timeout(gpointer user_data)
+{
+	struct test_data *data = user_data;
+
+	data->timeout_id = 0;
+
+	data->state = CLOSING;
+	close(data->sk);
+
+	return FALSE;
+}
+
+static void close_socket()
+{
+	struct test_data *data = tester_get_data();
+
+	data->timeout_id = g_timeout_add_seconds(5, test_timeout, data);
+
+	test_add_condition(data);
+}
+
+static bool command_hci_callback(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	tester_print("HCI Command 0x%04x length %u", opcode, length);
+
+	if (opcode != BT_HCI_CMD_LE_SET_SCAN_ENABLE)
+		return true;
+
+	if (length != sizeof(struct bt_hci_cmd_le_set_scan_enable)) {
+		tester_warn("Invalid parameter size for HCI command");
+		goto error;
+	}
+
+	if (data->state == CONNECTING) {
+		static const char expected_hci[] = { 0x01, 0x00 };
+
+		if (memcmp(param, expected_hci, length) != 0) {
+			tester_warn("Enable: unexpected HCI cmd parameter");
+			goto error;
+		}
+		close_socket();
+
+	} else {
+		static const char expected_hci[] = { 0x00, 0x00 };
+
+		if (memcmp(param, expected_hci, length) != 0) {
+			tester_warn("Disable: unexpected HCI cmd parameter");
+			goto error;
+		}
+	}
+
+	test_condition_complete(data);
+
+	return true;
+
+error:
+	tester_test_failed();
+	return false;
+}
+
+static void test_command_connect(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct sockaddr_l2 addr;
+	int err;
+
+	/* Connect to remote device */
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	str2ba(SVR_BDADDR, &addr.l2_bdaddr);
+	addr.l2_bdaddr_type = BDADDR_LE_PUBLIC;
+	addr.l2_cid = htobs(CID);
+
+	tester_print("Registering HCI command callback");
+	hciemu_add_master_post_command_hook(data->hciemu, command_hci_callback,
+									NULL);
+	test_add_condition(data);
+
+	data->state = CONNECTING;
+
+	err = connect(data->sk, (struct sockaddr *) &addr, sizeof(addr));
+	if (err < 0 && errno != EINPROGRESS) {
+		tester_print("Can't connect: %s (%d)", strerror(errno), errno);
+		close(data->sk);
+		tester_test_failed();
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
-	test_le("Connection test 3", NULL, setup_connection, NULL);
+	test_le("Connection test 3", NULL, setup_connection,
+							test_command_connect);
 
 	return tester_run();
 }
