@@ -677,6 +677,21 @@ static void remote_version_complete(struct btdev *btdev, uint16_t handle)
 							&rvc, sizeof(rvc));
 }
 
+static void le_set_scan_enable_complete(struct btdev *btdev)
+{
+	int i;
+
+	for (i = 0; i < MAX_BTDEV_ENTRIES; i++) {
+		if (!btdev_list[i] || btdev_list[i] == btdev)
+			continue;
+
+		if (!btdev_list[i]->le_adv_enable)
+			continue;
+
+		printf("found one in adv mode\n");
+	}
+}
+
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -1315,6 +1330,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 							lsse->filter_dup);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		if (btdev->le_scan_enable)
+			le_set_scan_enable_complete(btdev);
 		break;
 
 	case BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE:
