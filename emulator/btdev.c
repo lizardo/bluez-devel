@@ -87,6 +87,7 @@ struct btdev {
 	uint8_t  le_simultaneous;
 	uint8_t  le_event_mask[8];
 	uint8_t  le_adv_data[31];
+	uint8_t  le_adv_data_len;
 };
 
 #define MAX_BTDEV_ENTRIES 16
@@ -1312,6 +1313,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
 		lsad = data;
+		btdev->le_adv_data_len = lsad->len;
 		memcpy(btdev->le_adv_data, lsad->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
