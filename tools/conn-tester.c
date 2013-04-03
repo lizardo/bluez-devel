@@ -64,6 +64,33 @@ struct test_data {
 				test_post_teardown, 10, user, free); \
 	} while (0)
 
+static void powered_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Controller powered on");
+	tester_pre_setup_complete();
+}
+
+static void set_le_powered()
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Powering on controller (with LE enabled)");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					powered_callback, NULL, NULL);
+}
+
 static void index_added_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -74,7 +101,7 @@ static void index_added_callback(uint16_t index, uint16_t length,
 
 	data->mgmt_index = index;
 
-	tester_pre_setup_complete();
+	set_le_powered();
 }
 
 static void index_removed_callback(uint16_t index, uint16_t length,
