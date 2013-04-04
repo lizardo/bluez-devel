@@ -26,9 +26,16 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <glib.h>
+
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+#include <bluetooth/l2cap.h>
 
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
@@ -47,7 +54,12 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	int unmet_conditions;
+	int sk;
+	bdaddr_t bdaddr;
 };
+
+#define CID 4
+#define SVR_BDADDR "aa:bb:cc:dd:ee:ff"
 
 #define test_le(name, data, setup, func) \
 	do { \
@@ -172,11 +184,43 @@ static void test_post_teardown(const void *test_data)
 	data->hciemu = NULL;
 }
 
+static void setup_connection(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct sockaddr_l2 addr;
+
+	bacpy(&data->bdaddr, BDADDR_ANY);
+
+	/* Create socket */
+	data->sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET | SOCK_NONBLOCK,
+								BTPROTO_L2CAP);
+	if (data->sk < 0) {
+		tester_print("Can't create socket: %s (%d)", strerror(errno),
+									errno);
+		tester_setup_failed();
+		return;
+	}
+
+	/* Bind to local address */
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, &data->bdaddr);
+	if (bind(data->sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		tester_print("Can't bind socket: %s (%d)", strerror(errno),
+									errno);
+		close(data->sk);
+		tester_setup_failed();
+	}
+
+	tester_setup_complete();
+	return;
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
-	test_le("Connection test 3", NULL, NULL, NULL);
+	test_le("Connection test 3", NULL, setup_connection, NULL);
 
 	return tester_run();
 }
