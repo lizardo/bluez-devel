@@ -62,7 +62,9 @@ struct test_data {
 	unsigned int timeout_id;
 	int sk;
 	bdaddr_t bdaddr;
-	int state;
+	struct hciemu *hciemu_snd;
+	enum hciemu_type hciemu_type_snd;
+int state;
 };
 
 #define CID 4
@@ -74,6 +76,7 @@ struct test_data {
 		user = malloc(sizeof(struct test_data)); \
 		if (!user) \
 			break; \
+		user->hciemu_snd = 0; \
 		user->hciemu_type = HCIEMU_TYPE_LE; \
 		user->test_data = data; \
 		user->initial_settings = 0x00000000; \
@@ -189,6 +192,12 @@ static void test_post_teardown(const void *test_data)
 
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
+
+	if (data->hciemu_snd) {
+		hciemu_unref(data->hciemu_snd);
+		data->hciemu_snd = NULL;
+	}
+
 }
 
 static void test_add_condition(struct test_data *data)
@@ -334,12 +343,33 @@ static void test_command_connect(const void *test_data)
 	}
 }
 
+static void setup_second_controller(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	data->hciemu_type_snd = HCIEMU_TYPE_LE;
+	data->hciemu_snd = hciemu_new(data->hciemu_type_snd);
+	if (!data->hciemu_snd) {
+		tester_warn("Failed to setup HCI emulation");
+		tester_setup_failed();
+	}
+
+	tester_setup_complete();
+}
+
+static void test_snd_connect(const void *test_data)
+{
+//	tester_test_passed();
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
 	test_le("Connection test 3", NULL, setup_connection,
 							test_command_connect);
+	test_le("Connection test 1", NULL, setup_second_controller,
+							test_snd_connect);
 
 	return tester_run();
 }
