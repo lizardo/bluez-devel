@@ -211,6 +211,7 @@ static bool create_vhci(struct hciemu *hciemu)
 	uint8_t bdaddr[6];
 	const char *str;
 	int fd, i;
+	static int c = 0;
 
 	btdev = btdev_create(hciemu->btdev_type, 0x00);
 	if (!btdev)
@@ -220,6 +221,8 @@ static bool create_vhci(struct hciemu *hciemu)
 
 	for (i = 5; i >= 0; i--, str += 3)
 		bdaddr[i] = strtol(str, NULL, 16);
+
+	bdaddr[5] = c++;
 
 	btdev_set_bdaddr(btdev, bdaddr);
 	btdev_set_command_handler(btdev, master_command_callback, hciemu);
