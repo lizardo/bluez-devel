@@ -83,19 +83,154 @@ int state;
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 10, user, free); \
+				test_post_teardown, 30, user, free); \
 	} while (0)
+
+static gboolean received_data(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	struct mgmt *mgmt = user_data;
+	struct mgmt_hdr *hdr;
+	struct mgmt_ev_cmd_complete *cc;
+	struct mgmt_ev_cmd_status *cs;
+	ssize_t bytes_read;
+	uint16_t opcode, event, index, length;
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+		return FALSE;
+
+	bytes_read = read(mgmt->fd, mgmt->buf, mgmt->len);
+	if (bytes_read < 0)
+		return TRUE;
+
+	hdr = (void *) (buf + 1);
+	ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
+	len -= (1 + HCI_EVENT_HDR_SIZE);
+
+	switch (hdr->evt) {
+
+	case EVT_CMD_COMPLETE:
+		cc = (void *) ptr;
+
+		if (cc->opcode != opcode)
+			continue;
+
+		ptr += EVT_CMD_COMPLETE_SIZE;
+		len -= EVT_CMD_COMPLETE_SIZE;
+
+		r->rlen = MIN(len, r->rlen);
+		memcpy(r->rparam, ptr, r->rlen);
+		goto done;
+	}
+
+	return TRUE;
+}
+
+static int hci_send_req_v2(int dd, struct hci_request *r, int to)
+{
+	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
+	uint16_t opcode = htobs(cmd_opcode_pack(r->ogf, r->ocf));
+	struct hci_filter nf, of;
+	socklen_t olen;
+	hci_event_hdr *hdr;
+	int err, try;
+
+	olen = sizeof(of);
+	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &olen) < 0)
+		return -1;
+
+	hci_filter_clear(&nf);
+	hci_filter_set_ptype(HCI_EVENT_PKT,  &nf);
+	hci_filter_set_event(EVT_CMD_COMPLETE, &nf);
+	hci_filter_set_event(r->event, &nf);
+	hci_filter_set_opcode(opcode, &nf);
+	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &nf, sizeof(nf)) < 0)
+		return -1;
+
+	mgmt->read_watch = g_io_add_watch_full(mgmt->io, G_PRIORITY_DEFAULT,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				received_data, mgmt, NULL);
+
+	if (hci_send_cmd(dd, r->ogf, r->ocf, r->clen, r->cparam) < 0)
+		goto failed;
+
+failed:
+	err = errno;
+	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	errno = err;
+	return -1;
+
+done:
+	setsockopt(dd, SOL_HCI, HCI_FILTER, &of, sizeof(of));
+	return 0;
+
+}
+
+static void set_advertising(int hdev)
+{
+	struct hci_request rq;
+	le_set_advertising_parameters_cp adv_params_cp;
+	uint8_t status;
+	int dd, ret;
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		tester_warn("Could not open device");
+		tester_test_failed();
+	}
+
+	memset(&adv_params_cp, 0, sizeof(adv_params_cp));
+	adv_params_cp.min_interval = htobs(0x0800);
+	adv_params_cp.max_interval = htobs(0x0800);
+	adv_params_cp.advtype = 0x00;
+	adv_params_cp.chan_map = 0x07;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_ADVERTISING_PARAMETERS;
+	rq.cparam = &adv_params_cp;
+	rq.clen = LE_SET_ADVERTISING_PARAMETERS_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	ret = hci_send_req(dd, &rq, 1000);
+	if (ret < 0) {
+		tester_warn(
+		"Could not set LE advertising parameters on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
+		tester_pre_setup_failed();
+		return;
+	}
+
+	ret = hci_le_set_advertise_enable(dd, 0x01, 1000);
+	hci_close_dev(dd);
+
+	if (ret < 0) {
+		tester_warn("Can't set advertise mode on hci%d: %s (%d)",
+						hdev, strerror(errno), errno);
+		tester_pre_setup_failed();
+		return;
+	}
+
+	tester_pre_setup_complete();
+}
 
 static void powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
+	uint16_t *index = user_data;
+
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
 		return;
 	}
 
 	tester_print("Controller powered on");
-	tester_pre_setup_complete();
+
+	if (*index == 0x00)
+		tester_pre_setup_complete();
+	else
+		set_advertising(1);
 }
 
 static void set_le_powered()
@@ -109,8 +244,8 @@ static void set_le_powered()
 				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					powered_callback, NULL, NULL);
+				sizeof(param), param,
+				powered_callback, &data->mgmt_index, NULL);
 }
 
 static void index_added_callback(uint16_t index, uint16_t length,
@@ -343,6 +478,8 @@ static void test_command_connect(const void *test_data)
 	}
 }
 
+
+
 static void setup_second_controller(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -354,7 +491,7 @@ static void setup_second_controller(const void *test_data)
 		tester_setup_failed();
 	}
 
-	tester_setup_complete();
+//	tester_setup_complete();
 }
 
 static void test_snd_connect(const void *test_data)
