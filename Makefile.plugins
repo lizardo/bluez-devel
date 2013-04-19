@@ -104,4 +104,7 @@ builtin_sources += profiles/heartrate/heartrate.c
 
 builtin_modules += cyclingspeed
 builtin_sources += profiles/cyclingspeed/cyclingspeed.c
+
+builtin_modules += gatt_external
+builtin_sources += attrib/gatt-external.c
 endif
