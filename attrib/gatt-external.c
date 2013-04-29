@@ -26,9 +26,17 @@
 #endif
 
 #include <glib.h>
+#include <errno.h>
 
+#include "error.h"
+#include "log.h"
 #include "plugin.h"
 #include "lib/uuid.h"
+#include "gdbus/gdbus.h"
+#include "dbus-common.h"
+
+#define GATT_OBJECT_PATH		"/org/bluez"
+#define GATT_SERVICE_INTERFACE		"org.bluez.gatt.Service1"
 
 /* Attribute access permissions (modes) */
 typedef enum {
@@ -50,13 +58,138 @@ struct gatt_characteristic {
 	GSList *descriptors;	/* profile specific descriptors */
 };
 
+/* FIXME: split into sub-functions */
+static DBusMessage *add_characteristic(DBusConnection *conn, DBusMessage *msg,
+								void *user_data)
+{
+	const char *sender, *uuid, *dispatcher_path;
+	const char *obj_path = "/org/bluez/test123";
+	DBusMessageIter args, iter;
+
+	sender = dbus_message_get_sender(msg);
+	DBG("sender %s", sender);
+
+	dbus_message_iter_init(msg, &args);
+
+	/* Characteristic UUID */
+
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_get_basic(&args, &uuid);
+	dbus_message_iter_next(&args);
+
+	/* FIXME: validate and store UUID */
+	DBG("Characteristic UUID: %s", uuid);
+
+	/* GATT procedure dispatcher object path */
+
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_OBJECT_PATH)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_get_basic(&args, &dispatcher_path);
+	dbus_message_iter_next(&args);
+
+	/* FIXME: store object path */
+	DBG("GATT procedure dispatcher: %s", dispatcher_path);
+
+	/* Characteristic basic/extended properties */
+
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_recurse(&args, &iter);
+
+	while (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
+		const char *value;
+
+		dbus_message_iter_get_basic(&iter, &value);
+
+		/* FIXME: validate and store properties */
+		DBG("New property: %s", value);
+
+		dbus_message_iter_next(&iter);
+	}
+
+	/* Characteristic value permissions */
+
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_recurse(&args, &iter);
+
+	while (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter value, entry, iter2;
+		const char *key;
+
+		dbus_message_iter_recurse(&iter, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return btd_error_invalid_args(msg);
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		/* FIXME: validate key */
+		DBG("Permission key: %s", key);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			return btd_error_invalid_args(msg);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_ARRAY)
+			return btd_error_invalid_args(msg);
+
+		dbus_message_iter_recurse(&value, &iter2);
+
+		while (dbus_message_iter_get_arg_type(&iter2) ==
+							DBUS_TYPE_STRING) {
+			const char *value;
+
+			dbus_message_iter_get_basic(&iter2, &value);
+
+			/* FIXME: validate and store permissions */
+			DBG("New permission: %s", value);
+
+			dbus_message_iter_next(&iter);
+		}
+	}
+
+	/* FIXME: Register disconnect watch */
+	/* FIXME: investigate if returning object path is a good idea */
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &obj_path,
+							DBUS_TYPE_INVALID);
+}
+
+static const GDBusMethodTable service_methods[] = {
+	{ GDBUS_METHOD("AddCharacteristic",
+		GDBUS_ARGS({ "uuid", "s" }, { "procedure_dispatcher", "o" },
+			{ "properties", "as" }, { "permissions", "a{sv}" }),
+		GDBUS_ARGS({ "characteristic", "o" }), add_characteristic) },
+	{ },
+};
+
 static int gatt_external_init(void)
 {
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+							GATT_OBJECT_PATH,
+							GATT_SERVICE_INTERFACE,
+							service_methods, NULL,
+							NULL, NULL, NULL)) {
+                error("D-Bus failed to register %s interface",
+                                                        GATT_SERVICE_INTERFACE);
+                return -EIO;
+	}
+
 	return 0;
 }
 
 static void gatt_external_exit(void)
 {
+	g_dbus_unregister_interface(btd_get_dbus_connection(), GATT_OBJECT_PATH,
+							GATT_SERVICE_INTERFACE);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(gatt_external, VERSION,
