@@ -1,0 +1,210 @@
+BlueZ D-Bus GATT API description
+********************************
+
+
+GATT Manager hierarchy
+======================
+
+Service		org.bluez
+Interface	org.bluez.gatt.Manager1
+Object path	/org/bluez
+
+Methods		object CreateApplication()
+
+			Return an object that represents a registered
+			application. The application will be closed by the
+			DestroyApplication() call or implicitly when the
+			program leaves the bus.
+
+			Possible errors: org.bluez.Error.Failed
+
+		void DestroyApplication(object application)
+
+			Close the application represented by the given object
+			that has been previously created.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotFound
+					 org.bluez.Error.NotAllowed
+
+GATT Application hierarchy
+==========================
+
+Service		org.bluez
+Interface	org.bluez.gatt.Application1
+Object path	/org/bluez/gatt/{application0,...}
+
+Methods		object AddService(string uuid, boolean primary,
+							boolean single_instance)
+
+			Add a new GATT service for this application.
+			The following is required to create a service:
+			- Service UUID (either 16-bit or 128-bit);
+			- Whether it is a primary service; and,
+			- Whether only a single instance is permitted.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+					 org.bluez.Error.Failed
+
+		void RemoveService(object service)
+
+			This removes the GATT service that has been previously
+			registered. The object path parameter must match the
+			value returned by AddService().
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotFound
+
+		void PublishServices()
+
+			Make all GATT services previously registered available
+			for all clients. After publishing the services, all
+			bonded clients will be notified of any changes using
+			the ServiceChanged characteristic notification.
+
+GATT Service hierarchy
+======================
+
+Service		org.bluez
+Interface	org.bluez.gatt.Service1
+Object path	/org/bluez/gatt/{application0,...}/{service0,...}
+
+Methods		void IncludeService(object service)
+
+			Include an external GATT service.
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotFound
+
+		object AddCharacteristic(string uuid, object dispatcher,
+				array{string} properties, dict permissions)
+
+			Add a new characteristic to this service. It is allowed
+			for a service to have multiple instances of the same
+			characteristic, depending on profile requirements.
+
+			The dispatcher object should contain methods for
+			reading or writing the characteristic value (see
+			description for org.bluez.gatt.ProcedureDispatcher1
+			below).
+
+			The characteristic properties define a set of supported
+			procedures which are allowed/disallowed. The possible
+			values are:
+				"broadcast", "read", "write-without-response",
+				"write", "notify", "indicate", "signed-write",
+				"reliable-write", "writable-auxiliaries"
+
+			The "permissions" parameter is a dictionary that
+			contains the permissions for access, authentication,
+			authorization and encryption.
+			The possible values are:
+				"access": "read", "write"
+				"authentication": "read", "write"
+				"authorization": "read", "write"
+				"encryption": "read", "write"
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.Failed
+
+		void RemoveCharacteristic(object characteristic)
+
+			Remove the characteristic that has been previously
+			registered. The object path parameter must match the
+			value returned by AddCharacteristic().
+
+			Possible errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotFound
+
+GATT Characteristic hierarchy
+=============================
+
+Service		org.bluez
+Interface	org.bluez.gatt.Characteristic1
+Object path	/org/bluez/gatt/{application0,...}/{service0,...}/{characteristic0,...}
+
+Methods		object AddDescriptor(string uuid, object dispatcher,
+							dict permissions)
+
+			Add a characteristic descriptor. A descriptor contains
+			additional information about the characteristic value.
+			The characteristic can have as many descriptors as it
+			needs. The descriptors are identified by the given UUID.
+
+			The dispatcher object should contain methods for
+			reading or writing the characteristic value (see
+			description for org.bluez.gatt.ProcedureDispatcher1
+			below).
+
+			The "permissions" parameter is a dictionary that
+			contains the permissions for access, authentication,
+			authorization and encryption.
+
+			This method should only be used to add profile specific
+			descriptors, since those defined by the Bluetooth Core
+			Spec are automatically added depending on the parameters
+			passed when creating the characteristic.
+
+		void RemoveDescriptor(object descriptor)
+
+			Remove the given descriptor from the characteristic.
+
+GATT Procedure Dispatcher hierarchy
+===================================
+
+Service		org.bluez
+Interface	org.bluez.gatt.ProcedureDispatcher1
+Object path	freely definable
+
+Methods		void WriteValue(object target, uint16 offset, array{byte} value,
+								object response)
+
+			Request to execute a write procedure on the given
+			target object. This means that the value will be written
+			on a characteristic on the server side. This method
+			covers all the Write Value procedures described
+			on the Bluetooth Core Spec, as Write Without Response,
+			Signed Write Without Response, Write Characteristic
+			Value, Write Long Characteristic Values and Reliable
+			Writes.
+
+			The offset parameter is used for Write Long
+			Characteristic or Reliable Writes, when the client needs
+			to know which part of the value is going to be written.
+
+			The response object is used for sending a response to
+			the client (if the procedure requires a response).
+
+		void ReadValue(object target, uint16 offset, object response)
+
+			Request to execute a characteristic read value
+			procedure. This method can be used to perform either
+			Read Characteristic Value or Read Long Characteristic
+			Value.
+
+			The offset parameter is used for Read Long
+			Characteristic Value in order to inform which part of
+			value is being read.
+
+			The response object is used for returning the requested
+			value, or for sending a Error Response. See
+			org.bluez.gatt.ProcedureResponse1 description below for
+			details.
+
+GATT Procedure Response hierarchy
+=================================
+
+Service		org.bluez
+Interface	org.bluez.gatt.ProcedureResponse1
+Object path	freely definable
+
+Methods		void SendResponse(dict parameters)
+
+			Send response for a read/write operation. The
+			dictionary can have the following values:
+				"error": ATT error code (byte)
+				"value": attribute value for ReadValue()
+					 (array{byte})
+				"cache": whether BlueZ should cache returned
+					 value (boolean)
