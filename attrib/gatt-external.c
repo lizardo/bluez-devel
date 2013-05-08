@@ -37,6 +37,7 @@
 
 #define GATT_OBJECT_PATH		"/org/bluez"
 #define GATT_SERVICE_INTERFACE		"org.bluez.gatt.Service1"
+#define GATT_MANAGER_INTERFACE		"org.bluez.gatt.Manager1"
 
 /* Attribute access permissions (modes) */
 typedef enum {
@@ -163,11 +164,31 @@ static DBusMessage *add_characteristic(DBusConnection *conn, DBusMessage *msg,
 							DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *manager_create_application(DBusConnection *conn,
+							DBusMessage *msg,
+							void *user_data)
+{
+	const char *obj_path = "/org/bluez/gatt/application0";
+	
+	DBG("object path: %s", obj_path);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &obj_path,
+							DBUS_TYPE_INVALID);
+}
+
+
 static const GDBusMethodTable service_methods[] = {
 	{ GDBUS_METHOD("AddCharacteristic",
 		GDBUS_ARGS({ "uuid", "s" }, { "procedure_dispatcher", "o" },
 			{ "properties", "as" }, { "permissions", "a{sv}" }),
 		GDBUS_ARGS({ "characteristic", "o" }), add_characteristic) },
+	{ },
+};
+
+static const GDBusMethodTable manager_methods[] = {
+	{ GDBUS_METHOD("CreateApplication", NULL,
+		GDBUS_ARGS({ "application", "o" }),
+		manager_create_application) },
 	{ },
 };
 
@@ -180,14 +201,33 @@ static int gatt_external_init(void)
 							NULL, NULL, NULL)) {
                 error("D-Bus failed to register %s interface",
                                                         GATT_SERVICE_INTERFACE);
-                return -EIO;
+                goto register_service_failed;
+	}
+
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+							GATT_OBJECT_PATH,
+							GATT_MANAGER_INTERFACE,
+							manager_methods, NULL,
+							NULL, NULL, NULL)) {
+                error("D-Bus failed to register %s interface",
+                                                        GATT_MANAGER_INTERFACE);
+
+                goto register_manager_failed;
 	}
 
 	return 0;
+
+register_manager_failed:
+	g_dbus_unregister_interface(btd_get_dbus_connection(), GATT_OBJECT_PATH,
+							GATT_SERVICE_INTERFACE);
+register_service_failed:
+	return -EIO;
 }
 
 static void gatt_external_exit(void)
 {
+	g_dbus_unregister_interface(btd_get_dbus_connection(), GATT_OBJECT_PATH,
+							GATT_MANAGER_INTERFACE);
 	g_dbus_unregister_interface(btd_get_dbus_connection(), GATT_OBJECT_PATH,
 							GATT_SERVICE_INTERFACE);
 }
