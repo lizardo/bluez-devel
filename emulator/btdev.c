@@ -111,6 +111,21 @@ struct btdev {
 
 static struct btdev *btdev_list[MAX_BTDEV_ENTRIES] = { };
 
+static void run_hooks(struct btdev *btdev, enum btdev_hook_type type,
+				uint16_t opcode, const void *data, uint16_t len)
+{
+	int i;
+
+	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
+		if (btdev->hook_list[i] == NULL)
+			break;
+
+		if (btdev->hook_list[i]->type == type)
+			btdev->hook_list[i]->handler((void *)data, len,
+						btdev->hook_list[i]->user_data);
+	}
+}
+
 static inline int add_btdev(struct btdev *btdev)
 {
 	int i, index = -1;
@@ -511,7 +526,11 @@ static void send_event(struct btdev *btdev, uint8_t event,
 	if (len > 0)
 		memcpy(pkt_data + 1 + sizeof(*hdr), data, len);
 
+	run_hooks(btdev, BTDEV_HOOK_PRE_EVT, event, pkt_data, pkt_len);
+
 	send_packet(btdev, pkt_data, pkt_len);
+
+	run_hooks(btdev, BTDEV_HOOK_POST_EVT, event, pkt_data, pkt_len);
 
 	free(pkt_data);
 }
@@ -1562,6 +1581,9 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	callback.data = data + sizeof(*hdr);
 	callback.len = hdr->plen;
 
+	run_hooks(btdev, BTDEV_HOOK_PRE_CMD, callback.opcode, callback.data,
+								callback.len);
+
 	if (btdev->command_handler)
 		btdev->command_handler(callback.opcode,
 					callback.data, callback.len,
@@ -1569,6 +1591,9 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	else
 		default_cmd(btdev, callback.opcode,
 					callback.data, callback.len);
+
+	run_hooks(btdev, BTDEV_HOOK_POST_CMD, callback.opcode, callback.data,
+								callback.len);
 }
 
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
