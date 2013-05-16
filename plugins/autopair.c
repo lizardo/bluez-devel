@@ -146,14 +146,18 @@ static struct btd_adapter_driver autopair_driver = {
 static int autopair_init(void)
 {
 	/* Initialize the random seed from /dev/urandom */
-	unsigned int seed = time(NULL);
+	unsigned int seed;
+	size_t nread = 0;
 	FILE *f;
 
 	f = fopen("/dev/urandom", "rb");
 	if (f != NULL) {
-		fread(&seed, sizeof(seed), 1, f);
+		nread = fread(&seed, sizeof(seed), 1, f);
 		fclose(f);
 	}
+
+	if (f == NULL || nread != 1)
+		seed = time(NULL);
 
 	srand(seed);
 
