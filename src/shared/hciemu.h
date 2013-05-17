@@ -32,8 +32,14 @@ enum hciemu_type {
 	HCIEMU_TYPE_LE,
 };
 
-struct hciemu *hciemu_new(enum hciemu_type type);
+enum hciemu_hook_type {
+	HCIEMU_HOOK_PRE_CMD,
+	HCIEMU_HOOK_POST_CMD,
+	HCIEMU_HOOK_PRE_EVT,
+	HCIEMU_HOOK_POST_EVT,
+};
 
+struct hciemu *hciemu_new(enum hciemu_type type);
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
 
@@ -42,5 +48,12 @@ const char *hciemu_get_address(struct hciemu *hciemu);
 typedef bool (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 						uint8_t len, void *user_data);
 
+typedef bool (*hciemu_hook_func_t)(const void *data, uint16_t len,
+							void *user_data);
+
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data);
+
+int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
+				uint16_t opcode, hciemu_hook_func_t function,
+				void *user_data);
