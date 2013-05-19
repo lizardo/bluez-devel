@@ -53,7 +53,8 @@ typedef void (*btdev_command_func) (uint16_t opcode,
 typedef void (*btdev_send_func) (const void *data, uint16_t len,
 							void *user_data);
 
-typedef void (*btdev_hook_func) (void *pdu, uint16_t len, void *user_data);
+typedef void (*btdev_hook_func) (const void *data, uint16_t len,
+							void *user_data);
 
 enum btdev_type {
 	BTDEV_TYPE_BREDRLE,

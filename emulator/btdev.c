@@ -121,7 +121,7 @@ static void run_hooks(struct btdev *btdev, enum btdev_hook_type type,
 			break;
 
 		if (btdev->hook_list[i]->type == type)
-			btdev->hook_list[i]->handler((void *)data, len,
+			btdev->hook_list[i]->handler(data, len,
 						btdev->hook_list[i]->user_data);
 	}
 }
