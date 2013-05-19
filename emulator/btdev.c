@@ -114,15 +114,12 @@ static struct btdev *btdev_list[MAX_BTDEV_ENTRIES] = { };
 static void run_hooks(struct btdev *btdev, enum btdev_hook_type type,
 				uint16_t opcode, const void *data, uint16_t len)
 {
+	struct hook **hlist = btdev->hook_list;
 	int i;
 
-	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
-		if (btdev->hook_list[i] == NULL)
-			break;
-
-		if (btdev->hook_list[i]->type == type)
-			btdev->hook_list[i]->handler(data, len,
-						btdev->hook_list[i]->user_data);
+	for (i = 0; i < MAX_HOOK_ENTRIES && hlist[i] != NULL; i++) {
+		if (hlist[i]->type == type)
+			hlist[i]->handler(data, len, hlist[i]->user_data);
 	}
 }
 
