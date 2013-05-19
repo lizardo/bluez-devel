@@ -381,7 +381,7 @@ bool hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 	case HCIEMU_HOOK_POST_CMD:
 		hook_type = BTDEV_HOOK_POST_CMD;
 		break;
-        case HCIEMU_HOOK_PRE_EVT:
+	case HCIEMU_HOOK_PRE_EVT:
 		hook_type = BTDEV_HOOK_PRE_EVT;
 		break;
 	case HCIEMU_HOOK_POST_EVT:
