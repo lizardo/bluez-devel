@@ -118,8 +118,13 @@ static void run_hooks(struct btdev *btdev, enum btdev_hook_type type,
 	int i;
 
 	for (i = 0; i < MAX_HOOK_ENTRIES && hlist[i] != NULL; i++) {
-		if (hlist[i]->type == type)
-			hlist[i]->handler(data, len, hlist[i]->user_data);
+		if (hlist[i]->opcode != opcode)
+			continue;
+
+		if (hlist[i]->type != type)
+			continue;
+
+		hlist[i]->handler(data, len, hlist[i]->user_data);
 	}
 }
 
