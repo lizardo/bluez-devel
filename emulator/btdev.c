@@ -878,7 +878,6 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
-		inquiry_complete(btdev, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_INQUIRY_CANCEL:
@@ -1499,6 +1498,16 @@ unsupported:
 	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
 }
 
+static void post_default_cmd(struct btdev *btdev, uint16_t opcode,
+						const void *data, uint8_t len)
+{
+	switch (opcode) {
+	case BT_HCI_CMD_INQUIRY:
+		inquiry_complete(btdev, BT_HCI_ERR_SUCCESS);
+		break;
+	}
+}
+
 struct btdev_callback {
 	void (*function)(btdev_callback callback, uint8_t response,
 				uint8_t status, const void *data, uint8_t len);
@@ -1524,6 +1533,10 @@ static void handler_callback(btdev_callback callback, uint8_t response,
 		default_cmd(btdev, callback->opcode,
 					callback->data, callback->len);
 		break;
+	case BTDEV_RESPONSE_POST_DEFAULT:
+		post_default_cmd(btdev, callback->opcode, callback->data,
+								callback->len);
+		break;
 	case BTDEV_RESPONSE_COMMAND_STATUS:
 		cmd_status(btdev, status, callback->opcode);
 		break;
@@ -1539,25 +1552,31 @@ static void handler_callback(btdev_callback callback, uint8_t response,
 
 static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 {
-	struct btdev_callback callback;
+	struct btdev_callback *callback;
 	const struct bt_hci_cmd_hdr *hdr = data;
 
 	if (len < sizeof(*hdr))
 		return;
 
-	callback.function = handler_callback;
-	callback.user_data = btdev;
-	callback.opcode = le16_to_cpu(hdr->opcode);
-	callback.data = data + sizeof(*hdr);
-	callback.len = hdr->plen;
+	callback = malloc(sizeof(*callback));
+	if (!callback)
+		return;
+
+	callback->function = handler_callback;
+	callback->user_data = btdev;
+	callback->opcode = le16_to_cpu(hdr->opcode);
+	callback->data = data + sizeof(*hdr);
+	callback->len = hdr->plen;
 
 	if (btdev->command_handler)
-		btdev->command_handler(callback.opcode,
-					callback.data, callback.len,
-					&callback, btdev->command_data);
-	else
-		default_cmd(btdev, callback.opcode,
-					callback.data, callback.len);
+		btdev->command_handler(callback->opcode,
+					callback->data, callback->len,
+					callback, btdev->command_data);
+	else {
+		default_cmd(btdev, callback->opcode,
+					callback->data, callback->len);
+		free(callback);
+	}
 }
 
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)

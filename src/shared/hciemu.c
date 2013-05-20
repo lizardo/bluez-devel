@@ -40,6 +40,12 @@
 
 #include "hciemu.h"
 
+struct hciemu_command_hook {
+	hciemu_command_func_t function;
+	void *user_data;
+	btdev_callback callback;
+};
+
 struct hciemu {
 	int ref_count;
 	enum btdev_type btdev_type;
@@ -49,38 +55,24 @@ struct hciemu {
 	guint host_source;
 	guint master_source;
 	guint client_source;
-	GList *post_command_hooks;
+	struct hciemu_command_hook post_command_hook;
 	char bdaddr_str[18];
 };
-
-struct hciemu_command_hook {
-	hciemu_command_func_t function;
-	void *user_data;
-};
-
-static void destroy_command_hook(gpointer data, gpointer user_data)
-{
-	struct hciemu_command_hook *hook = data;
-
-	g_free(hook);
-}
 
 static void master_command_callback(uint16_t opcode,
 				const void *data, uint8_t len,
 				btdev_callback callback, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
-	GList *list;
 
 	btdev_command_default(callback);
 
-	for (list = g_list_first(hciemu->post_command_hooks); list;
-						list = g_list_next(list)) {
-		struct hciemu_command_hook *hook = list->data;
-
-		if (hook->function)
-			hook->function(opcode, data, len, hook->user_data);
-	}
+	if (hciemu->post_command_hook.function) {
+		hciemu->post_command_hook.callback = callback;
+		hciemu->post_command_hook.function(opcode, data, len,
+					hciemu->post_command_hook.user_data);
+	} else
+		free(callback);
 }
 
 static void client_command_callback(uint16_t opcode,
@@ -88,6 +80,7 @@ static void client_command_callback(uint16_t opcode,
 				btdev_callback callback, void *user_data)
 {
 	btdev_command_default(callback);
+	free(callback);
 }
 
 static void write_callback(const void *data, uint16_t len, void *user_data)
@@ -315,9 +308,6 @@ void hciemu_unref(struct hciemu *hciemu)
 	if (__sync_sub_and_fetch(&hciemu->ref_count, 1) > 0)
 		return;
 
-	g_list_foreach(hciemu->post_command_hooks, destroy_command_hook, NULL);
-	g_list_free(hciemu->post_command_hooks);
-
 	bthost_stop(hciemu->host_stack);
 
 	g_source_remove(hciemu->host_source);
@@ -344,23 +334,24 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 	return hciemu->bdaddr_str;
 }
 
-bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
+bool hciemu_set_master_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data)
 {
-	struct hciemu_command_hook *hook;
-
 	if (!hciemu)
 		return false;
 
-	hook = g_try_new0(struct hciemu_command_hook, 1);
-	if (!hook)
-		return false;
-
-	hook->function = function;
-	hook->user_data = user_data;
-
-	hciemu->post_command_hooks = g_list_append(hciemu->post_command_hooks,
-									hook);
+	hciemu->post_command_hook.function = function;
+	hciemu->post_command_hook.user_data = user_data;
 
 	return true;
+}
+
+void hciemu_resume_after_hook(struct hciemu *hciemu)
+{
+	if (!hciemu->post_command_hook.callback)
+		return;
+
+	btdev_command_post_default(hciemu->post_command_hook.callback);
+	free(hciemu->post_command_hook.callback);
+	hciemu->post_command_hook.callback = NULL;
 }

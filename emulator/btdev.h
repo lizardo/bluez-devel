@@ -27,6 +27,7 @@
 #define BTDEV_RESPONSE_DEFAULT		0
 #define BTDEV_RESPONSE_COMMAND_STATUS	1
 #define BTDEV_RESPONSE_COMMAND_COMPLETE	2
+#define BTDEV_RESPONSE_POST_DEFAULT	3
 
 typedef struct btdev_callback * btdev_callback;
 
@@ -36,6 +37,10 @@ void btdev_command_response(btdev_callback callback, uint8_t response,
 #define btdev_command_default(callback) \
 		btdev_command_response(callback, \
 			BTDEV_RESPONSE_DEFAULT, 0x00, NULL, 0);
+
+#define btdev_command_post_default(callback) \
+		btdev_command_response(callback, \
+			BTDEV_RESPONSE_POST_DEFAULT, 0x00, NULL, 0);
 
 #define btdev_command_status(callback, status) \
 		btdev_command_response(callback, \
