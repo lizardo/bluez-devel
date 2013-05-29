@@ -2618,7 +2618,7 @@ static bool command_hci_callback(uint16_t opcode, const void *param,
 	return true;
 }
 
-static void test_command_generic(const void *test_data)
+static void setup_test_command_generic(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
@@ -2655,6 +2655,17 @@ static void test_command_generic(const void *test_data)
 						command_hci_callback, data);
 		test_add_condition(data);
 	}
+}
+
+static void test_command_generic(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	uint16_t index;
+
+	index = test->send_index_none ? MGMT_INDEX_NONE : data->mgmt_index;
+
+	setup_test_command_generic(test_data);
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
 
