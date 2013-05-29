@@ -2106,37 +2106,41 @@ static bool setup_command_hci_callback(const void *data, uint16_t len,
 {
 	struct test_data *tdata = tester_get_data();
 	const struct generic_data *test = tdata->test_data;
-	bool *is_setup = user_data;
+	bool *is_setup = user_data, ret = false;
+	
 
 	tester_print("HCI Command 0x%04x length %u (setup)",
 					test->setup_expect_hci_command, len);
 
 	if (len != test->setup_expect_hci_len) {
 		tester_warn("Invalid parameter size for HCI command (setup)");
-		tester_setup_failed();
-		goto done;
+		goto fail;
 	}
 
 	if (memcmp(data, test->setup_expect_hci_param, len) != 0) {
 		tester_warn("Unexpected HCI command parameter value (setup)");
-		tester_setup_failed();
-		goto done;
+		goto fail;
 	}
 
 	if (is_setup && *is_setup)
 		tester_setup_complete();
 	else {
 		test_condition_complete(tdata);
-		hciemu_del_hook(tdata->hciemu, HCIEMU_HOOK_PRE_EVT,
-					test->setup_expect_hci_command);
-		return true;
+		ret = true;
 	}
+	goto done;
+
+fail:
+	if (is_setup && *is_setup)
+		tester_setup_failed();
+	else
+		tester_test_failed();
 
 done:
 	hciemu_del_hook(tdata->hciemu, HCIEMU_HOOK_PRE_EVT,
 			test->setup_expect_hci_command);
 
-	return false;
+	return ret;
 }
 
 static void setup_start_discovery_callback(uint8_t status, uint16_t length,
