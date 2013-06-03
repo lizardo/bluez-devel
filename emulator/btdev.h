@@ -92,3 +92,5 @@ int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
 
 bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
 							uint16_t opcode);
+
+void btdev_send_packet(struct btdev *btdev);

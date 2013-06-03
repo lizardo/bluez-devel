@@ -438,3 +438,8 @@ bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 
 	return btdev_del_hook(hciemu->master_dev, hook_type, opcode);
 }
+
+void hciemu_send_packet(struct hciemu *hciemu)
+{
+	btdev_send_packet(hciemu->master_dev);
+}

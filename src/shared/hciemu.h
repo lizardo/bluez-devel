@@ -60,3 +60,5 @@ int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 
 bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 							uint16_t opcode);
+
+void hciemu_send_packet(struct hciemu *hciemu);

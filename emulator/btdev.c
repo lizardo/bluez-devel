@@ -107,6 +107,9 @@ struct btdev {
 	uint16_t sync_train_interval;
 	uint32_t sync_train_timeout;
 	uint8_t  sync_train_service_data;
+
+	uint8_t dropped_pkt_data[240];
+	uint16_t dropped_pkt_len;
 };
 
 #define MAX_BTDEV_ENTRIES 16
@@ -647,6 +650,10 @@ static void send_event(struct btdev *btdev, uint8_t event,
 
 	if (run_hooks(btdev, BTDEV_HOOK_POST_EVT, event, pkt_data, pkt_len))
 		send_packet(btdev, pkt_data, pkt_len);
+	else {
+		memcpy(btdev->dropped_pkt_data, pkt_data, pkt_len);
+		btdev->dropped_pkt_len = pkt_len;
+	}
 
 	free(pkt_data);
 }
@@ -2026,4 +2033,11 @@ bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
 	}
 
 	return false;
+}
+
+void btdev_send_packet(struct btdev *btdev)
+{
+	if (btdev->dropped_pkt_len)
+		send_packet(btdev, btdev->dropped_pkt_data,
+							btdev->dropped_pkt_len);
 }
