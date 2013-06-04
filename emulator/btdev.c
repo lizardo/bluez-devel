@@ -1093,6 +1093,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_le_set_adv_enable *lsae;
 	const struct bt_hci_cmd_le_set_scan_enable *lsse;
 	const struct bt_hci_cmd_le_create_conn *lcc;
+	const struct bt_hci_cmd_remote_name_request_cancel *rnrc_cmd;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -1127,6 +1128,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
 	struct bt_hci_rsp_le_read_white_list_size lrwls;
+	struct bt_hci_rsp_remote_name_request_cancel rnrc;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -1180,8 +1182,10 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST_CANCEL:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
-		status = BT_HCI_ERR_SUCCESS;
-		cmd_complete(btdev, opcode, &status, sizeof(status));
+		rnrc_cmd = data;
+		rnrc.status = BT_HCI_ERR_SUCCESS;
+		memcpy(rnrc.bdaddr, rnrc_cmd->bdaddr, 6);
+		cmd_complete(btdev, opcode, &rnrc, sizeof(rnrc));
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_FEATURES:
