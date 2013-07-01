@@ -2133,11 +2133,11 @@ static void read_request_result(int err, uint8_t *value, size_t len,
 {
 	struct att_transaction *trans = user_data;
 	GAttrib *attrib = g_hash_table_lookup(gattrib_hash, trans->device);
+	struct btd_attribute *attr = trans->attr;
 
 	g_free(trans);
 
 	if (attrib) {
-		struct btd_attribute *attr = trans->attr;
 		uint8_t opdu[g_attrib_get_mtu(attrib)];
 		size_t olen;
 
