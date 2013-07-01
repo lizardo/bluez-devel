@@ -2779,6 +2779,9 @@ void btd_gatt_service_manager_init(void)
 
 void btd_gatt_service_manager_cleanup(void)
 {
+	GHashTableIter iter;
+	gpointer key, value;
+
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 			"/org/bluez", "org.bluez.gatt.ServiceManager1");
 
@@ -2793,5 +2796,14 @@ void btd_gatt_service_manager_cleanup(void)
 	}
 
 	g_hash_table_destroy(gattrib_hash);
+
+	/* Temporary solution to free keys/values */
+	g_hash_table_iter_init(&iter, database_hash);
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		GList *list = value;
+		g_list_free_full(list, (GDestroyNotify) destroy_attribute);
+		g_hash_table_iter_steal(&iter);
+	}
+
 	g_hash_table_destroy(database_hash);
 }
