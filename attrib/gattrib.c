@@ -635,6 +635,8 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 	if (attrib == NULL)
 		return FALSE;
 
+	DBG("attrib %p", attrib);
+
 	ret = cancel_all_per_queue(attrib->requests);
 	ret = cancel_all_per_queue(attrib->responses) && ret;
 
