@@ -80,14 +80,24 @@ static void discover_primary_free(struct discover_primary *dp)
 
 static struct included_discovery *isd_ref(struct included_discovery *isd)
 {
-	__sync_fetch_and_add(&isd->refs, 1);
+	int refs;
+
+	refs = __sync_add_and_fetch(&isd->refs, 1);
+
+	g_printerr("%s:%s() %p: ref=%d\n", __FILE__, __func__, isd, refs);
 
 	return isd;
 }
 
 static void isd_unref(struct included_discovery *isd)
 {
-	if (__sync_sub_and_fetch(&isd->refs, 1) > 0)
+	int refs;
+
+	refs = __sync_sub_and_fetch(&isd->refs, 1);
+
+	g_printerr("%s:%s() %p: ref=%d\n", __FILE__, __func__, isd, refs);
+
+	if (refs > 0)
 		return;
 
 	if (isd->err)
