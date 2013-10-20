@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -180,19 +181,19 @@ static void disconnect_io()
 	set_state(STATE_DISCONNECTED);
 }
 
-static void primary_all_cb(uint8_t status, GSList *services, void *user_data)
+static bool primary_all_cb(uint8_t status, GSList *services, void *user_data)
 {
 	GSList *l;
 
 	if (status) {
 		error("Discover all primary services failed: %s\n",
 						att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	if (services == NULL) {
 		error("No primary service found\n");
-		return;
+		return false;
 	}
 
 	for (l = services; l; l = l->next) {
@@ -200,21 +201,23 @@ static void primary_all_cb(uint8_t status, GSList *services, void *user_data)
 		rl_printf("attr handle: 0x%04x, end grp handle: 0x%04x uuid: %s\n",
 				prim->range.start, prim->range.end, prim->uuid);
 	}
+
+	return true;
 }
 
-static void primary_by_uuid_cb(uint8_t status, GSList *ranges, void *user_data)
+static bool primary_by_uuid_cb(uint8_t status, GSList *ranges, void *user_data)
 {
 	GSList *l;
 
 	if (status) {
 		error("Discover primary services by UUID failed: %s\n",
 							att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	if (ranges == NULL) {
 		error("No service UUID found\n");
-		return;
+		return false;
 	}
 
 	for (l = ranges; l; l = l->next) {
@@ -222,21 +225,23 @@ static void primary_by_uuid_cb(uint8_t status, GSList *ranges, void *user_data)
 		rl_printf("Starting handle: 0x%04x Ending handle: 0x%04x\n",
 						range->start, range->end);
 	}
+
+	return true;
 }
 
-static void included_cb(uint8_t status, GSList *includes, void *user_data)
+static bool included_cb(uint8_t status, GSList *includes, void *user_data)
 {
 	GSList *l;
 
 	if (status) {
 		error("Find included services failed: %s\n",
 							att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	if (includes == NULL) {
 		rl_printf("No included services found for this range\n");
-		return;
+		return false;
 	}
 
 	for (l = includes; l; l = l->next) {
@@ -246,16 +251,18 @@ static void included_cb(uint8_t status, GSList *includes, void *user_data)
 					incl->handle, incl->range.start,
 					incl->range.end, incl->uuid);
 	}
+
+	return true;
 }
 
-static void char_cb(uint8_t status, GSList *characteristics, void *user_data)
+static bool char_cb(uint8_t status, GSList *characteristics, void *user_data)
 {
 	GSList *l;
 
 	if (status) {
 		error("Discover all characteristics failed: %s\n",
 							att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	for (l = characteristics; l; l = l->next) {
@@ -266,6 +273,8 @@ static void char_cb(uint8_t status, GSList *characteristics, void *user_data)
 				chars->properties, chars->value_handle,
 				chars->uuid);
 	}
+
+	return true;
 }
 
 static bool char_desc_cb(uint8_t status, GSList *descs, void *user_data)

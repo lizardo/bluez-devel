@@ -132,7 +132,7 @@ static bool discover_descriptor_cb(uint8_t status, GSList *descs,
 	return true;
 }
 
-static void refresh_discovered_cb(uint8_t status, GSList *chars,
+static bool refresh_discovered_cb(uint8_t status, GSList *chars,
 								void *user_data)
 {
 	struct scan *scan = user_data;
@@ -141,12 +141,12 @@ static void refresh_discovered_cb(uint8_t status, GSList *chars,
 
 	if (status) {
 		error("Scan Refresh %s", att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	if (!chars) {
 		DBG("Scan Refresh not supported");
-		return;
+		return false;
 	}
 
 	chr = chars->data;
@@ -157,15 +157,17 @@ static void refresh_discovered_cb(uint8_t status, GSList *chars,
 	end = scan->range.end;
 
 	if (start > end)
-		return;
+		return false;
 
 	scan->refresh_handle = chr->value_handle;
 
 	gatt_discover_char_desc(scan->attrib, start, end,
 					discover_descriptor_cb, user_data);
+
+	return true;
 }
 
-static void iwin_discovered_cb(uint8_t status, GSList *chars, void *user_data)
+static bool iwin_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 {
 	struct scan *scan = user_data;
 	struct gatt_char *chr;
@@ -173,7 +175,7 @@ static void iwin_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	if (status) {
 		error("Discover Scan Interval Window: %s",
 						att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	chr = chars->data;
@@ -182,6 +184,8 @@ static void iwin_discovered_cb(uint8_t status, GSList *chars, void *user_data)
 	DBG("Scan Interval Window handle: 0x%04x", scan->iwhandle);
 
 	write_scan_params(scan->attrib, scan->iwhandle);
+
+	return true;
 }
 
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)

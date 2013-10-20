@@ -728,7 +728,7 @@ done:
 		g_attrib_send(csc->attrib, 0, opdu, olen, NULL, NULL, NULL);
 }
 
-static void discover_char_cb(uint8_t status, GSList *chars, void *user_data)
+static bool discover_char_cb(uint8_t status, GSList *chars, void *user_data)
 {
 	struct csc *csc = user_data;
 	uint16_t feature_val_handle = 0;
@@ -736,7 +736,7 @@ static void discover_char_cb(uint8_t status, GSList *chars, void *user_data)
 	if (status) {
 		error("Discover CSCS characteristics: %s",
 							att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	for (; chars; chars = chars->next) {
@@ -773,6 +773,8 @@ static void discover_char_cb(uint8_t status, GSList *chars, void *user_data)
 	if (feature_val_handle > 0)
 		gatt_read_char(csc->attrib, feature_val_handle,
 							read_feature_cb, csc);
+
+	return true;
 }
 
 static void enable_measurement(gpointer data, gpointer user_data)

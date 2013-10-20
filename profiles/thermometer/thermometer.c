@@ -700,7 +700,7 @@ static void process_thermometer_char(struct thermometer *t,
 	}
 }
 
-static void configure_thermometer_cb(uint8_t status, GSList *characteristics,
+static bool configure_thermometer_cb(uint8_t status, GSList *characteristics,
 								void *user_data)
 {
 	struct thermometer *t = user_data;
@@ -709,7 +709,7 @@ static void configure_thermometer_cb(uint8_t status, GSList *characteristics,
 	if (status != 0) {
 		error("Discover thermometer characteristics: %s",
 							att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	for (l = characteristics; l; l = l->next) {
@@ -718,6 +718,8 @@ static void configure_thermometer_cb(uint8_t status, GSList *characteristics,
 
 		process_thermometer_char(t, c, c_next);
 	}
+
+	return true;
 }
 
 static void write_interval_cb(uint8_t status, void *user_data)

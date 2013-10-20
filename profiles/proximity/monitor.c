@@ -184,7 +184,7 @@ static void linkloss_written(uint8_t status, void *user_data)
 				PROXIMITY_INTERFACE, "LinkLossAlertLevel");
 }
 
-static void char_discovered_cb(uint8_t status, GSList *characteristics,
+static bool char_discovered_cb(uint8_t status, GSList *characteristics,
 								void *user_data)
 {
 	struct monitor *monitor = user_data;
@@ -193,7 +193,7 @@ static void char_discovered_cb(uint8_t status, GSList *characteristics,
 
 	if (status) {
 		error("Discover Link Loss handle: %s", att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	DBG("Setting alert level \"%s\" on Reporter", monitor->linklosslevel);
@@ -204,6 +204,8 @@ static void char_discovered_cb(uint8_t status, GSList *characteristics,
 
 	gatt_write_char(monitor->attrib, monitor->linklosshandle, &value, 1,
 						linkloss_written, monitor);
+
+	return true;
 }
 
 static int write_alert_level(struct monitor *monitor)
@@ -244,7 +246,7 @@ static void tx_power_read_cb(uint8_t status, const uint8_t *value, size_t vlen,
 	DBG("Tx Power Level: %02x", (int8_t) value[0]);
 }
 
-static void tx_power_handle_cb(uint8_t status, GSList *characteristics,
+static bool tx_power_handle_cb(uint8_t status, GSList *characteristics,
 								void *user_data)
 {
 	struct monitor *monitor = user_data;
@@ -252,7 +254,7 @@ static void tx_power_handle_cb(uint8_t status, GSList *characteristics,
 
 	if (status) {
 		error("Discover Tx Power handle: %s", att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	chr = characteristics->data;
@@ -262,6 +264,8 @@ static void tx_power_handle_cb(uint8_t status, GSList *characteristics,
 
 	gatt_read_char(monitor->attrib, monitor->txpowerhandle,
 							tx_power_read_cb, monitor);
+
+	return true;
 }
 
 static void read_tx_power(struct monitor *monitor)
@@ -331,7 +335,7 @@ static void write_immediate_alert(struct monitor *monitor)
 						immediate_written, monitor);
 }
 
-static void immediate_handle_cb(uint8_t status, GSList *characteristics,
+static bool immediate_handle_cb(uint8_t status, GSList *characteristics,
 								void *user_data)
 {
 	struct monitor *monitor = user_data;
@@ -340,7 +344,7 @@ static void immediate_handle_cb(uint8_t status, GSList *characteristics,
 	if (status) {
 		error("Discover Immediate Alert handle: %s",
 						att_ecode2str(status));
-		return;
+		return false;
 	}
 
 	chr = characteristics->data;
@@ -350,6 +354,8 @@ static void immediate_handle_cb(uint8_t status, GSList *characteristics,
 
 	if (monitor->fallbacklevel)
 		write_immediate_alert(monitor);
+
+	return true;
 }
 
 static void discover_immediate_handle(struct monitor *monitor)

@@ -3132,7 +3132,7 @@ static int service_by_range_cmp(gconstpointer a, gconstpointer b)
 	return memcmp(&prim->range, range, sizeof(*range));
 }
 
-static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
+static bool find_included_cb(uint8_t status, GSList *includes, void *user_data)
 {
 	struct included_search *search = user_data;
 	struct btd_device *device = search->req->device;
@@ -3143,7 +3143,7 @@ static void find_included_cb(uint8_t status, GSList *includes, void *user_data)
 		error("Disconnected while doing included discovery");
 		g_slist_free(search->services);
 		g_free(search);
-		return;
+		goto done;
 	}
 
 	if (status != 0) {
@@ -3175,12 +3175,14 @@ done:
 		register_all_services(search->req, search->services);
 		g_slist_free(search->services);
 		g_free(search);
-		return;
+		return true;
 	}
 
 	prim = search->current->data;
 	gatt_find_included(device->attrib, prim->range.start, prim->range.end,
 					find_included_cb, search);
+
+	return true;
 }
 
 static void find_included_services(struct browse_req *req, GSList *services)
@@ -3202,7 +3204,7 @@ static void find_included_services(struct browse_req *req, GSList *services)
 					find_included_cb, search);
 }
 
-static void primary_cb(uint8_t status, GSList *services, void *user_data)
+static bool primary_cb(uint8_t status, GSList *services, void *user_data)
 {
 	struct browse_req *req = user_data;
 
@@ -3218,10 +3220,12 @@ static void primary_cb(uint8_t status, GSList *services, void *user_data)
 
 		device->browse = NULL;
 		browse_request_free(req);
-		return;
+		return false;
 	}
 
 	find_included_services(req, services);
+
+	return true;
 }
 
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
