@@ -311,6 +311,31 @@ static DBusMessage *register_service(DBusConnection *conn,
 static DBusMessage *unregister_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	DBusMessageIter iter;
+	const char *path, *sender;
+	GSList *list;
+
+	DBG("Unregistering GATT Service");
+
+	if (!dbus_message_iter_init(msg, &iter))
+		return btd_error_invalid_args(msg);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH)
+		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	/* Search by owner */
+	sender = dbus_message_get_sender(msg);
+	list = g_slist_find_custom(external_apps, sender,
+						external_app_owner_cmp);
+	if (list == NULL)
+		return btd_error_does_not_exist(msg);
+
+	/* Remove from the local attribute database */
+	if (!remove_service(list->data, path))
+		return btd_error_does_not_exist(msg);
+
 	return dbus_message_new_method_return(msg);
 }
 
