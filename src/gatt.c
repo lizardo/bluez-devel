@@ -44,6 +44,9 @@
 static const bt_uuid_t primary_uuid  = { .type = BT_UUID16,
 					.value.u16 = GATT_PRIM_SVC_UUID };
 
+static const bt_uuid_t chr_uuid = { .type = BT_UUID16,
+					.value.u16 = GATT_CHARAC_UUID };
+
 struct btd_attribute {
 	uint16_t handle;
 	bt_uuid_t type;
@@ -161,6 +164,83 @@ void btd_gatt_remove_service(struct btd_attribute *service)
 	 */
 	if (first_node)
 		local_attribute_db = list;
+}
+
+struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties)
+{
+	struct btd_attribute *char_decl, *char_value = NULL;
+
+	/* Attribute value length */
+	uint16_t len = 1 + 2 + bt_uuid_len(uuid);
+	uint8_t value[len];
+
+	/*
+	 * Characteristic DECLARATION
+	 *
+	 *   TYPE         ATTRIBUTE VALUE
+	 * +-------+---------------------------------+
+	 * |0x2803 | 0xXX 0xYYYY 0xZZZZ...           |
+	 * | (1)   |  (2)   (3)   (4)                |
+	 * +------+----------------------------------+
+	 * (1) - 2 octets: Characteristic declaration UUID
+	 * (2) - 1 octet : Properties
+	 * (3) - 2 octets: Handle of the characteristic Value
+	 * (4) - 2 or 16 octets: Characteristic UUID
+	 */
+
+	value[0] = properties;
+
+	/*
+	 * Since we don't know yet the characteristic value attribute
+	 * handle, we skip and set it later.
+	 */
+
+	att_put_uuid(*uuid, &value[3]);
+
+	char_decl = new_const_attribute(&chr_uuid, value, len);
+	if (local_database_add(next_handle, char_decl) < 0)
+		goto fail;
+
+	next_handle = next_handle + 1;
+
+	/*
+	 * Characteristic VALUE
+	 *
+	 *   TYPE         ATTRIBUTE VALUE
+	 * +----------+---------------------------------+
+	 * |0xZZZZ... | 0x...                           |
+	 * |  (1)     |  (2)                            |
+	 * +----------+---------------------------------+
+	 * (1) - 2 or 16 octets: Characteristic UUID
+	 * (2) - N octets: Value is read dynamically from the service
+	 * implementation (external entity).
+	 */
+
+	char_value = g_new0(struct btd_attribute, 1);
+	memcpy(&char_value->type, uuid, sizeof(char_value->type));
+
+	/* TODO: Read & Write callbacks */
+
+	if (local_database_add(next_handle, char_value) < 0)
+		goto fail;
+
+	next_handle = next_handle + 1;
+
+	/*
+	 * Update characteristic value handle in characteristic declaration
+	 * attribute. For local attributes, we can assume that the handle
+	 * representing the characteristic value will get the next available
+	 * handle. However, for remote attribute this assumption is not valid.
+	 */
+	att_put_u16(char_value->handle, &char_decl->value[1]);
+
+	return char_value;
+
+fail:
+	g_free(char_decl);
+	g_free(char_value);
+
+	return NULL;
 }
 
 static void send_error(int sk, uint8_t opcode, uint16_t handle, uint8_t ecode)
