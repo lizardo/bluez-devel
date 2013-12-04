@@ -54,6 +54,13 @@ struct btd_attribute {
 	uint8_t value[0];
 };
 
+struct procedure_data {
+	GList *match;			/* List of matching attributes */
+	size_t vlen;			/* Pattern: length of each value */
+	size_t olen;				/* Output PDU length */
+	uint8_t opdu[ATT_DEFAULT_LE_MTU];	/* Output PDU */
+};
+
 static struct io *server_io;
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
@@ -376,6 +383,112 @@ static void read_by_group(int sk, const uint8_t *ipdu, ssize_t ilen)
 	read_by_group_resp(sk, start, end, &pattern);
 }
 
+static void read_by_type_result(int sk, uint8_t *value, size_t vlen,
+								void *user_data)
+{
+	struct procedure_data *proc = user_data;
+	GList *head = proc->match;
+	struct btd_attribute *attr = head->data;
+
+	proc->match = g_list_delete_link(proc->match, head);
+
+	/* According to Core v4.0 spec, page 1853, if the attribute
+	 * value is longer than (ATT_MTU - 4) or 253 octets, whichever
+	 * is smaller, then the first (ATT_MTU - 4) or 253 octets shall
+	 * be included in this response.
+	 * TODO: Replace ATT_DEFAULT_LE_MTU by the correct transport MTU
+	 */
+
+	if (proc->olen == 0) {
+		proc->vlen = MIN((uint16_t) (ATT_DEFAULT_LE_MTU - 4),
+							MIN(vlen, 253));
+
+		/* First entry: Set handle-value length */
+		proc->opdu[proc->olen++] = ATT_OP_READ_BY_TYPE_RESP;
+		proc->opdu[proc->olen++] = 2 + proc->vlen;
+	} else if (proc->vlen != MIN(vlen, 253))
+		/* Length doesn't match with handle-value length */
+		goto send;
+
+	/* It there space enough for another handle-value pair? */
+	if (proc->olen + 2 + proc->vlen > ATT_DEFAULT_LE_MTU)
+		goto send;
+
+	/* Copy attribute handle into opdu */
+	att_put_u16(attr->handle, &proc->opdu[proc->olen]);
+	proc->olen += 2;
+
+	/* Copy attribute value into opdu */
+	memcpy(&proc->opdu[proc->olen], value, proc->vlen);
+	proc->olen += proc->vlen;
+
+	if (proc->match == NULL)
+		goto send;
+
+	/* Getting the next attribute */
+	attr = proc->match->data;
+
+	read_by_type_result(sk, attr->value, attr->value_len, proc);
+
+	return;
+
+send:
+	write_pdu(sk, proc->opdu, proc->olen);
+	g_list_free(proc->match);
+	g_free(proc);
+}
+
+static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
+{
+	struct procedure_data *proc;
+	struct btd_attribute *attr;
+	GList *list;
+	uint16_t start, end;
+	bt_uuid_t uuid;
+
+	if (dec_read_by_type_req(ipdu, ilen, &start, &end, &uuid) == 0) {
+		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		return;
+	}
+
+	DBG("Read By Type: 0x%04x to 0x%04x", start, end);
+
+	if (start == 0x0000 || start > end) {
+		send_error(sk, ipdu[0], start, ATT_ECODE_INVALID_HANDLE);
+		return;
+	}
+
+	proc = g_malloc0(sizeof(*proc));
+
+	for (list = local_attribute_db; list; list = g_list_next(list)) {
+		attr = list->data;
+
+		if (attr->handle < start)
+			continue;
+
+		if (attr->handle > end)
+			break;
+
+		if (bt_uuid_cmp(&attr->type, &uuid) != 0)
+			continue;
+
+		/* Checking attribute consistency */
+		if (attr->value_len == 0)
+			continue;
+
+		proc->match = g_list_append(proc->match, attr);
+	}
+
+	if (proc->match == NULL) {
+		send_error(sk, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
+		g_free(proc);
+		return;
+	}
+
+	attr = proc->match->data;
+	read_by_type_result(sk, attr->value, attr->value_len, proc);
+}
+
 static bool channel_handler_cb(struct io *io, void *user_data)
 {
 	uint8_t ipdu[ATT_DEFAULT_LE_MTU];
@@ -397,7 +510,6 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 	case ATT_OP_WRITE_CMD:
 	case ATT_OP_WRITE_REQ:
 	case ATT_OP_READ_REQ:
-	case ATT_OP_READ_BY_TYPE_REQ:
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_FIND_BY_TYPE_REQ:
@@ -411,6 +523,9 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 
 	case ATT_OP_READ_BY_GROUP_REQ:
 		read_by_group(sk, ipdu, ilen);
+		break;
+	case ATT_OP_READ_BY_TYPE_REQ:
+		read_by_type(sk, ipdu, ilen);
 		break;
 
 	/* Responses */

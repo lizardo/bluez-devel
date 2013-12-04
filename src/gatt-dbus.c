@@ -42,6 +42,7 @@
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
+#include "src/shared/io.h"
 #include "gatt.h"
 #include "gatt-dbus.h"
 
