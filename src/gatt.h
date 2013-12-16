@@ -60,11 +60,13 @@ void btd_gatt_remove_service(struct btd_attribute *service);
  * to local attribute database.
  * @uuid:	Characteristic UUID (16-bits or 128-bits).
  * @properties:	Characteristic properties. See Core SPEC 4.1 page 2183.
+ * @read_cb:	Callback used to provide the characteristic value.
  *
  * Returns a reference to characteristic value attribute. In case of error,
  * NULL is returned.
  */
-struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties);
+struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties,
+						btd_attr_read_t read_cb);
 
 /* btd_gatt_read_attribute - Read the value of an attribute.
  * @attr:	Attribute to be read.

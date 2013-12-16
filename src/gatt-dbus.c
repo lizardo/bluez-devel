@@ -212,6 +212,46 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	return eapp;
 }
 
+static void read_external_char_cb(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
+{
+	DBusMessageIter iter, array;
+	GDBusProxy *proxy;
+	uint8_t *value;
+	int len;
+
+	/*
+	 * Remote device is trying to read the informed attribute,
+	 * "Value" should be read from the proxy. GDBusProxy tracks
+	 * properties changes automatically, it is not necessary to
+	 * get the value directly from the GATT server.
+	 */
+	proxy = g_hash_table_lookup(proxy_hash, attr);
+	if (proxy == NULL) {
+		result(ENOENT, NULL, 0, user_data);
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(proxy, "Value", &iter)) {
+		/* Unusual situation, read property will checked earlier */
+		result(EPERM, NULL, 0, user_data);
+		return;
+	}
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY) {
+		DBG("External service inconsistent!");
+		result(EPERM, NULL, 0, user_data);
+		return;
+	}
+
+	dbus_message_iter_recurse(&iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	DBG("attribute: %p read %d bytes", attr, len);
+
+	result(0, value, len, user_data);
+}
+
 static int register_external_characteristic(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
@@ -237,7 +277,8 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	 * The characteristic added bellow is restricted to Write
 	 * Without Response property only.
 	 */
-	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP);
+	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP,
+							read_external_char_cb);
 	if (attr == NULL)
 		return -EINVAL;
 
