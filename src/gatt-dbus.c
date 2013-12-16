@@ -68,6 +68,12 @@ struct external_app {
 
 static GSList *external_apps;
 
+/*
+ * Attribute to Proxy hash table. Used to map incoming
+ * ATT operations to its external characteristic proxy.
+ */
+static GHashTable *proxy_hash;
+
 static void service_free(struct service_data *service)
 {
 	g_free(service->path);
@@ -153,7 +159,6 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	remove_service(eapp, path);
 }
 
-
 static void external_app_watch_destroy(gpointer user_data)
 {
 	struct external_app *eapp = user_data;
@@ -233,7 +238,14 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	 * Without Response property only.
 	 */
 	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP);
-	return attr ? 0 : -EINVAL;
+	if (attr == NULL)
+		return -EINVAL;
+
+	/* Attribute to Proxy hash table */
+	DBG("Adding proxy %p", proxy);
+	g_hash_table_insert(proxy_hash, attr, g_dbus_proxy_ref(proxy));
+
+	return 0;
 }
 
 static struct btd_attribute *register_external_service(GDBusProxy *proxy)
@@ -413,6 +425,9 @@ static const GDBusMethodTable methods[] = {
 
 gboolean gatt_dbus_manager_register(void)
 {
+	proxy_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+				NULL, (GDestroyNotify) g_dbus_proxy_unref);
+
 	return g_dbus_register_interface(btd_get_dbus_connection(),
 					"/org/bluez", GATT_MGR_IFACE,
 					methods, NULL, NULL, NULL, NULL);
@@ -420,6 +435,9 @@ gboolean gatt_dbus_manager_register(void)
 
 void gatt_dbus_manager_unregister(void)
 {
+	g_hash_table_destroy(proxy_hash);
+	proxy_hash = NULL;
+
 	g_dbus_unregister_interface(btd_get_dbus_connection(), "/org/bluez",
 							GATT_MGR_IFACE);
 }
