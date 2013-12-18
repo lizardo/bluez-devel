@@ -217,6 +217,59 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	return eapp;
 }
 
+static bool property_string2int(const char *proper, uint8_t *out)
+{
+	/* Regular Properties: See core spec 4.1 page 2183 */
+	if (strcmp("broadcast", proper) == 0)
+		*out = GATT_CHR_PROP_BROADCAST;
+	else if (strcmp("read", proper) == 0)
+		*out = GATT_CHR_PROP_READ;
+	else if (strcmp("write-without-response", proper) == 0)
+		*out = GATT_CHR_PROP_WRITE_WITHOUT_RESP;
+	else if (strcmp("write", proper) == 0)
+		*out = GATT_CHR_PROP_WRITE;
+	else if (strcmp("notify", proper) == 0)
+		*out = GATT_CHR_PROP_NOTIFY;
+	else if (strcmp("indicate", proper) == 0)
+		*out = GATT_CHR_PROP_INDICATE;
+	else if (strcmp("authenticated-signed-writes", proper) == 0)
+		*out = GATT_CHR_PROP_AUTH;
+
+	/* TODO: Extended properties. Ref core spec 4.1 page 2185  */
+	else
+		return false;
+
+	return true;
+}
+
+static uint8_t property_string2bitmask(DBusMessageIter *iter)
+{
+	DBusMessageIter istr;
+	uint8_t prop_bitmask = 0, prop;
+	const char *str;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY) {
+		error("Invalid type for Properties");
+		return 0;
+	}
+
+	dbus_message_iter_recurse(iter, &istr);
+
+	do {
+		if (dbus_message_iter_get_arg_type(&istr) !=
+				DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&istr, &str);
+		if (!property_string2int(str, &prop))
+			return 0;
+
+		prop_bitmask |= prop;
+	} while (dbus_message_iter_next(&istr));
+
+	return prop_bitmask;
+}
+
 static void read_external_char_cb(struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
@@ -328,6 +381,7 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	DBusMessageIter iter;
 	const char *uuid;
 	bt_uuid_t btuuid;
+	uint8_t prop_bitmask;
 	struct btd_attribute *attr;
 
 	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
@@ -338,18 +392,19 @@ static int register_external_characteristic(GDBusProxy *proxy)
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
+	if (!g_dbus_proxy_get_property(proxy, "Flags", &iter))
+		return -EINVAL;
+
+	prop_bitmask = property_string2bitmask(&iter);
+
+	if (!prop_bitmask)
+		return -EINVAL;
+
 	if (bt_string_to_uuid(&btuuid, uuid) < 0)
 		return -EINVAL;
 
-	/*
-	 * TODO: Add properties according to Core SPEC page 1898.
-	 * Reference table 3.5: Characteristic Properties bit field.
-	 *
-	 * The characteristic added bellow is restricted to Write
-	 * Without Response property only.
-	 */
-	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP,
-				read_external_char_cb, write_external_char_cb);
+	attr = btd_gatt_add_char(&btuuid, prop_bitmask, read_external_char_cb,
+						write_external_char_cb);
 	if (attr == NULL)
 		return -EINVAL;
 
