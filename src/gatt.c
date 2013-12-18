@@ -606,6 +606,35 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	attr->read_cb(attr, read_request_result, proc);
 }
 
+static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
+{
+	uint16_t handle;
+	GList *list;
+	struct btd_attribute *attr;
+	size_t vlen;
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+
+	if (dec_write_cmd(ipdu, ilen, &handle, value, &vlen) == 0)
+		return;
+
+	list = g_list_find_custom(local_attribute_db,
+				GUINT_TO_POINTER(handle), find_by_handle);
+
+	if (!list) {
+		DBG("Attribute 0x%04x: not found", handle);
+		return;
+	}
+
+	attr = list->data;
+
+	if (attr->write_cb == NULL) {
+		DBG("Attribute 0x%04x: Write not allowed", handle);
+		return;
+	}
+
+	attr->write_cb(attr, value, vlen);
+}
+
 static bool channel_handler_cb(struct io *io, void *user_data)
 {
 	uint8_t ipdu[ATT_DEFAULT_LE_MTU];
@@ -624,7 +653,6 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 		break;
 
 	/* Requests */
-	case ATT_OP_WRITE_CMD:
 	case ATT_OP_WRITE_REQ:
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
@@ -645,6 +673,9 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 		break;
 	case ATT_OP_READ_REQ:
 		read_request(io, ipdu, ilen);
+		break;
+	case ATT_OP_WRITE_CMD:
+		write_cmd(sk, ipdu, ilen);
 		break;
 
 	/* Responses */
