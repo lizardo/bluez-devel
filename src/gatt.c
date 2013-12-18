@@ -632,7 +632,68 @@ static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
 		return;
 	}
 
-	attr->write_cb(attr, value, vlen);
+	attr->write_cb(attr, value, vlen, NULL, NULL);
+}
+
+static void write_request_result(int err, void *user_data)
+{
+	struct procedure_data *proc = user_data;
+	uint16_t olen;
+	int sk = io_get_fd(proc->io);
+
+	DBG("Write Request (0x%04X) status: %d", proc->handle, err);
+
+	if (err != 0)
+		olen = enc_error_resp(ATT_OP_WRITE_REQ, proc->handle,
+						errno_to_att(err), proc->opdu,
+						sizeof(proc->opdu));
+	else
+		olen = enc_write_resp(proc->opdu);
+
+	write_pdu(sk, proc->opdu, olen);
+	g_free(proc);
+}
+
+static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
+{
+	struct procedure_data *proc;
+	struct btd_attribute *attr;
+	GList *list;
+	size_t vlen;
+	uint16_t handle;
+	uint8_t value[ATT_DEFAULT_LE_MTU];
+	int sk = io_get_fd(io);
+
+	if (dec_write_req(ipdu, ilen, &handle, value, &vlen) == 0) {
+		send_error(sk, ipdu[0], handle, ATT_ECODE_INVALID_PDU);
+		return;
+	}
+
+	list = g_list_find_custom(local_attribute_db, GUINT_TO_POINTER(handle),
+								find_by_handle);
+	if (!list) {
+		send_error(sk, ipdu[0], handle, ATT_ECODE_INVALID_HANDLE);
+		return;
+	}
+
+	attr = list->data;
+
+	if (attr->write_cb == NULL) {
+		send_error(sk, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
+		return;
+	}
+
+	/*
+	 * For external characteristics (GATT server), the write callback
+	 * is mapped to a DBusProxy simple proxy Set property method call.
+	 */
+
+	proc = g_malloc0(sizeof(*proc));
+	proc->io = io;
+	proc->handle = handle;
+
+	DBG("Write Request (0x%04X)", proc->handle);
+	attr->write_cb(attr, value, vlen, write_request_result, proc);
 }
 
 static bool channel_handler_cb(struct io *io, void *user_data)
@@ -653,7 +714,6 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 		break;
 
 	/* Requests */
-	case ATT_OP_WRITE_REQ:
 	case ATT_OP_MTU_REQ:
 	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_FIND_BY_TYPE_REQ:
@@ -676,6 +736,9 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 		break;
 	case ATT_OP_WRITE_CMD:
 		write_cmd(sk, ipdu, ilen);
+		break;
+	case ATT_OP_WRITE_REQ:
+		write_request(io, ipdu, ilen);
 		break;
 
 	/* Responses */

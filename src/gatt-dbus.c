@@ -66,6 +66,11 @@ struct external_app {
 	guint register_timer;
 };
 
+struct external_write_data {
+	btd_attr_write_result_t result_cb;
+	void *user_data;
+};
+
 static GSList *external_apps;
 
 /*
@@ -254,23 +259,65 @@ static void read_external_char_cb(struct btd_attribute *attr,
 
 static void write_char_reply(const DBusError *derr, void *user_data)
 {
-	if (derr)
-		DBG("Write reply: %s", derr->message);
+	struct external_write_data *wdata = user_data;
+	int err = 0;
+
+	/*
+	 * Security requirements shall be handled by the core. If external
+	 * applications returns an error, the reasons will be restricted to
+	 * invalid argument or application specific errors.
+	 */
+
+	if (dbus_error_is_set(derr) == FALSE)
+		goto done;
+
+	DBG("Write reply: %s", derr->message);
+
+	if (dbus_error_has_name(derr, DBUS_ERROR_NO_REPLY))
+		err = ETIMEDOUT;
+	else if (dbus_error_has_name(derr, ERROR_INTERFACE ".InvalidArguments"))
+		err = EINVAL;
+	else
+		err = EPROTO;
+
+done:
+	if (wdata && wdata->result_cb)
+		wdata->result_cb(err, wdata->user_data);
 }
 
 static void write_external_char_cb(struct btd_attribute *attr,
-					const uint8_t *value, size_t len)
+					const uint8_t *value, size_t len,
+					btd_attr_write_result_t result,
+					void *user_data)
 {
 	GDBusProxy *proxy;
 
 	proxy = g_hash_table_lookup(proxy_hash, attr);
-	if (proxy == NULL)
-		/* FIXME: Attribute not found */
+	if (proxy == NULL) {
+		result(ENOENT, user_data);
 		return;
+	}
 
-	g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
+	if (result) {
+		struct external_write_data *wdata;
+
+		wdata = g_new0(struct external_write_data, 1);
+		wdata->result_cb = result;
+		wdata->user_data = user_data;
+
+		g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
+						value, len, write_char_reply,
+						wdata, g_free);
+	} else {
+		/*
+		 * Caller is not interested in the Set method call result.
+		 * This flow implements the ATT Write Command scenario, where
+		 * the remote doesn't receive ATT response.
+		 */
+		g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
 						value, len, write_char_reply,
 						NULL, NULL);
+	}
 
 	DBG("Server: Write characteristic callback %s",
 					g_dbus_proxy_get_path(proxy));

@@ -46,8 +46,11 @@ typedef void (*btd_attr_read_t) (struct btd_attribute *attr,
  * @err:	error in errno format.
  * @user_data:	user_data passed in btd_attr_write_t callback
  */
+typedef void (*btd_attr_write_result_t) (int err, void *user_data);
 typedef void (*btd_attr_write_t) (struct btd_attribute *attr,
-					const uint8_t *value, size_t len);
+					const uint8_t *value, size_t len,
+					btd_attr_write_result_t result,
+					void *user_data);
 
 /* btd_gatt_add_service - Add a service declaration to local attribute database.
  * @uuid:	Service UUID.
