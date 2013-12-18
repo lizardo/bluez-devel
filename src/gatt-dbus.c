@@ -252,6 +252,30 @@ static void read_external_char_cb(struct btd_attribute *attr,
 	result(0, value, len, user_data);
 }
 
+static void write_char_reply(const DBusError *derr, void *user_data)
+{
+	if (derr)
+		DBG("Write reply: %s", derr->message);
+}
+
+static void write_external_char_cb(struct btd_attribute *attr,
+					const uint8_t *value, size_t len)
+{
+	GDBusProxy *proxy;
+
+	proxy = g_hash_table_lookup(proxy_hash, attr);
+	if (proxy == NULL)
+		/* FIXME: Attribute not found */
+		return;
+
+	g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
+						value, len, write_char_reply,
+						NULL, NULL);
+
+	DBG("Server: Write characteristic callback %s",
+					g_dbus_proxy_get_path(proxy));
+}
+
 static int register_external_characteristic(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
@@ -278,7 +302,7 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	 * Without Response property only.
 	 */
 	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP,
-						read_external_char_cb, NULL);
+				read_external_char_cb, write_external_char_cb);
 	if (attr == NULL)
 		return -EINVAL;
 
