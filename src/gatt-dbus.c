@@ -278,7 +278,7 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	 * Without Response property only.
 	 */
 	attr = btd_gatt_add_char(&btuuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP,
-							read_external_char_cb);
+						read_external_char_cb, NULL);
 	if (attr == NULL)
 		return -EINVAL;
 
