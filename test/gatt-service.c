@@ -55,7 +55,17 @@ struct characteristic {
 	char *uuid;
 	uint8_t *value;
 	int vlen;
+	const char **props;
 };
+
+/*
+ * Alert Level support Write Without Response only. Supported
+ * properties are defined at doc/gatt-api.txt. See "Flags"
+ * property of the characteritic object.
+ */
+static const char const *ias_alert_level_props[] = {
+						"write-without-response",
+						NULL };
 
 static gboolean chr_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
@@ -80,6 +90,25 @@ static gboolean chr_get_value(const GDBusPropertyTable *property,
 
 	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
 						&chr->value, chr->vlen);
+
+	dbus_message_iter_close_container(iter, &array);
+
+	return TRUE;
+}
+
+static gboolean chr_get_props(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct characteristic *chr = data;
+	DBusMessageIter array;
+	int i;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &array);
+
+	for (i = 0; chr->props[i]; i++)
+		dbus_message_iter_append_basic(&array,
+					DBUS_TYPE_STRING, &chr->props[i]);
 
 	dbus_message_iter_close_container(iter, &array);
 
@@ -118,6 +147,7 @@ static void chr_set_value(const GDBusPropertyTable *property,
 static const GDBusPropertyTable chr_properties[] = {
 	{ "UUID",	"s",	chr_get_uuid },
 	{ "Value", "ay", chr_get_value, chr_set_value, NULL },
+	{ "Flags", "as", chr_get_props, NULL, NULL },
 	{ }
 };
 
@@ -160,8 +190,9 @@ static void chr_iface_destroy(gpointer user_data)
 }
 
 static int register_characteristic(DBusConnection *conn, const char *uuid,
-						const uint8_t *value, int vlen,
-						const char *service_path)
+					const uint8_t *value, int vlen,
+					const char **props,
+					const char *service_path)
 {
 	struct characteristic *chr;
 	static int id = 1;
@@ -176,6 +207,7 @@ static int register_characteristic(DBusConnection *conn, const char *uuid,
 
 	chr->value = g_memdup(value, vlen);
 	chr->vlen = vlen;
+	chr->props = props;
 
 	if (g_dbus_register_interface(conn, path, CHARACTERISTIC_IFACE,
 					NULL, NULL, chr_properties,
@@ -218,7 +250,8 @@ static void create_services(DBusConnection *conn)
 
 	/* Add Alert Level Characteristic to Immediate Alert Service */
 	ret = register_characteristic(conn, ALERT_LEVEL_CHR_UUID, &level,
-						sizeof(level), service_path);
+					sizeof(level), ias_alert_level_props,
+					service_path);
 	if (ret < 0) {
 		printf("Couldn't register Alert Level characteristic (IAS)\n");
 		g_dbus_unregister_interface(conn, service_path, SERVICE_IFACE);
