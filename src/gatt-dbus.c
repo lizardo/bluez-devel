@@ -383,6 +383,8 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	bt_uuid_t btuuid;
 	uint8_t prop_bitmask;
 	struct btd_attribute *attr;
+	btd_attr_write_t write_cb;
+	btd_attr_read_t read_cb;
 
 	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
 		return -EINVAL;
@@ -400,11 +402,22 @@ static int register_external_characteristic(GDBusProxy *proxy)
 	if (!prop_bitmask)
 		return -EINVAL;
 
+	if (prop_bitmask & GATT_CHR_PROP_READ)
+		read_cb =  read_external_char_cb;
+	else
+		read_cb = NULL;
+
+	if (prop_bitmask & GATT_CHR_PROP_WRITE_WITHOUT_RESP ||
+			prop_bitmask & GATT_CHR_PROP_WRITE)
+		write_cb =  write_external_char_cb;
+	else
+		write_cb = NULL;
+
 	if (bt_string_to_uuid(&btuuid, uuid) < 0)
 		return -EINVAL;
 
-	attr = btd_gatt_add_char(&btuuid, prop_bitmask, read_external_char_cb,
-						write_external_char_cb);
+	 /* TODO: Missing extend bits handling */
+	attr = btd_gatt_add_char(&btuuid, prop_bitmask, read_cb, write_cb);
 	if (attr == NULL)
 		return -EINVAL;
 
