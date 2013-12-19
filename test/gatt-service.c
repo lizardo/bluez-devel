@@ -46,6 +46,7 @@
 
 /* Immediate Alert Service UUID */
 #define IAS_UUID			"00001802-0000-1000-8000-00805f9b34fb"
+#define LLS_UUID			"00001803-0000-1000-8000-00805f9b34fb"
 #define ALERT_LEVEL_CHR_UUID		"00002a06-0000-1000-8000-00805f9b34fb"
 
 static GMainLoop *main_loop;
@@ -66,6 +67,11 @@ struct characteristic {
 static const char const *ias_alert_level_props[] = {
 						"write-without-response",
 						NULL };
+
+static const char const *lls_alert_level_props[] = {
+							"write",
+							"read",
+							NULL };
 
 static gboolean chr_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
@@ -260,6 +266,24 @@ static void create_services(DBusConnection *conn)
 	}
 
 	services = g_slist_prepend(services, service_path);
+	printf("Registered service: %s\n", service_path);
+
+	/* Link Loss Service (LLS) */
+	service_path = register_service(conn, LLS_UUID);
+	if (service_path == NULL)
+		return;
+
+	ret = register_characteristic(conn, ALERT_LEVEL_CHR_UUID, &level,
+					sizeof(level), lls_alert_level_props,
+					service_path);
+	if (ret < 0) {
+		printf("Couldn't register Alert Level characteristic (LLS)\n");
+		g_dbus_unregister_interface(conn, service_path, SERVICE_IFACE);
+		g_free(service_path);
+		return;
+	}
+
+	services = g_slist_append(services, g_strdup(service_path));
 	printf("Registered service: %s\n", service_path);
 }
 
