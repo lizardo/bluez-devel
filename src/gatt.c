@@ -35,6 +35,8 @@
 #include "log.h"
 #include "lib/uuid.h"
 #include "attrib/att.h"
+#include "attrib/gattrib.h"
+#include "attrib/gatt.h"
 #include "src/shared/io.h"
 
 #include "gatt-dbus.h"
@@ -537,6 +539,61 @@ static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
 	read_by_type_result(sk, attr->value, attr->value_len, proc);
 }
 
+static GList *get_char_decl_from_attr(GList *attr_node)
+{
+	GList *char_decl_node;
+	struct btd_attribute *attr;
+
+	/*
+	 * If any declaration is given (instead of a characteristic value), the
+	 * previous attribute is always different from a characteristic declaration.
+	 * A characteristic DECLARATION is always followed by a characteristic VALUE
+	 * attribute.
+	 */
+	char_decl_node = g_list_previous(attr_node);
+	if (char_decl_node == NULL)
+		return NULL;
+
+	attr = char_decl_node->data;
+	if (bt_uuid_cmp(&chr_uuid, &attr->type) != 0)
+		return NULL;
+
+	return char_decl_node;
+}
+
+static bool validate_att_operation(GList *attr_node, uint8_t opcode)
+{
+	GList *char_decl_node;
+	struct btd_attribute *attr;
+
+	/*
+	 * All declarations are readable, and NOT writeable, some descriptors
+	 * may have restrictions defined in the upper layer. For those, we let
+	 * the proxy to return an error. For all attributes, except
+	 * characteristic VALUE attribute we allow reading without checking
+	 * permissions.
+	 */
+
+	char_decl_node = get_char_decl_from_attr(attr_node);
+	attr = (char_decl_node ? char_decl_node->data : NULL);
+
+	/*
+	 * "attr" contains the reference to a characteristic DECLARATION when
+	 * the given attribute node is a characteristic VALUE, otherwise the
+	 * search will return NULL.
+	 */
+	switch (opcode) {
+	case ATT_OP_READ_REQ:
+		if (attr == NULL)
+			return true;
+
+		if (attr->value[0] & GATT_CHR_PROP_READ)
+			return true;
+	}
+
+	return false;
+}
+
 static void read_request_result(int err, uint8_t *value, size_t len,
 							void *user_data)
 {
@@ -576,7 +633,11 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 
 	attr = list->data;
 
-	/* TODO: permission/property checking missing */
+	if (!validate_att_operation(list, ATT_OP_READ_REQ)) {
+		send_error(sk, ATT_OP_READ_REQ, attr->handle,
+						ATT_ECODE_READ_NOT_PERM);
+		return;
+	}
 
 	/* Constant value */
 	if (attr->value_len > 0) {
