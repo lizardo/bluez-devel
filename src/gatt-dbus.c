@@ -47,23 +47,34 @@
 
 #define REGISTER_TIMER         1
 
+struct service_data {
+	char *path;
+	struct btd_attribute *attr;
+};
+
 struct external_app {
 	char *owner;
-	char *path;
 	GDBusClient *client;
 	GSList *proxies;
 	unsigned int watch;
+	GSList *services;
 	guint register_timer;
 };
 
 static GSList *external_apps;
 
-static int external_app_path_cmp(gconstpointer a, gconstpointer b)
+static void service_free(struct service_data *service)
 {
-	const struct external_app *eapp = a;
+	g_free(service->path);
+	g_free(service);
+}
+
+static int service_path_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct service_data *service = a;
 	const char *path = b;
 
-	return g_strcmp0(eapp->path, path);
+	return g_strcmp0(service->path, path);
 }
 
 static void proxy_added(GDBusProxy *proxy, void *user_data)
@@ -82,6 +93,29 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	eapp->proxies = g_slist_append(eapp->proxies, proxy);
 }
 
+static bool remove_service(struct external_app *eapp, const char *path)
+{
+	struct service_data *service;
+	GSList *list;
+
+	list = g_slist_find_custom(eapp->services, path,
+						service_path_cmp);
+	if (list == NULL)
+		return false;
+
+	 /* Removing service path from the list and from the database */
+	service = list->data;
+
+	eapp->services = g_slist_remove(eapp->services, service);
+
+	if (service->attr)
+		btd_gatt_remove_service(service->attr);
+
+	service_free(service);
+
+	return true;
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	struct external_app *eapp = user_data;
@@ -93,14 +127,14 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	DBG("path %s iface %s", path, interface);
 
 	eapp->proxies = g_slist_remove(eapp->proxies, proxy);
+
+	remove_service(eapp, path);
 }
 
 
 static void external_app_watch_destroy(gpointer user_data)
 {
 	struct external_app *eapp = user_data;
-
-	/* TODO: Remove from the database */
 
 	external_apps = g_slist_remove(external_apps, eapp);
 
@@ -109,9 +143,17 @@ static void external_app_watch_destroy(gpointer user_data)
 	if (eapp->register_timer)
 		g_source_remove(eapp->register_timer);
 
+	g_slist_free_full(eapp->services, (GDestroyNotify) service_free);
 	g_free(eapp->owner);
-	g_free(eapp->path);
 	g_free(eapp);
+}
+
+static int external_app_owner_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct external_app *eapp = a;
+	const char *sender = b;
+
+	return g_strcmp0(eapp->owner, sender);
 }
 
 static struct external_app *new_external_app(DBusConnection *conn,
@@ -136,7 +178,6 @@ static struct external_app *new_external_app(DBusConnection *conn,
 
 	eapp->owner = g_strdup(sender);
 	eapp->client = client;
-	eapp->path = g_strdup(path);
 
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
 								NULL, eapp);
@@ -144,33 +185,31 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	return eapp;
 }
 
-static int register_external_service(GDBusProxy *proxy)
+static struct btd_attribute *register_external_service(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
 	const char *uuid;
 	bt_uuid_t btuuid;
 
 	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
-		return -EINVAL;
+		return NULL;
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return -EINVAL;
+		return NULL;
 
 	dbus_message_iter_get_basic(&iter, &uuid);
 
 	if (bt_string_to_uuid(&btuuid, uuid) < 0)
-		return -EINVAL;
+		return NULL;
 
-	if (btd_gatt_add_service(&btuuid) == NULL)
-		return -EINVAL;
-
-	return 0;
+	return btd_gatt_add_service(&btuuid);
 }
 
 static gboolean finish_register(gpointer user_data)
 {
 	struct external_app *eapp = user_data;
-	GSList *list;
+	struct service_data *service;
+	GSList *lprx, *lsvc;
 
 	/*
 	 * It is not possible to detect when the last proxy object
@@ -183,25 +222,31 @@ static gboolean finish_register(gpointer user_data)
 
 	eapp->register_timer = 0;
 
-	for (list = eapp->proxies; list; list = g_slist_next(list)) {
+	for (lprx = eapp->proxies; lprx; lprx= g_slist_next(lprx)) {
 		const char *interface, *path;
-		GDBusProxy *proxy = list->data;
+		GDBusProxy *proxy = lprx->data;
 
 		interface = g_dbus_proxy_get_interface(proxy);
 		path = g_dbus_proxy_get_path(proxy);
 
-		if (g_strcmp0(SERVICE_IFACE, interface) != 0)
-			continue;
+		if (g_strcmp0(SERVICE_IFACE, interface) == 0) {
+			/*
+			 * Check if the service was registered with
+			 * register_service().
+			 */
+			lsvc = g_slist_find_custom(eapp->services, path,
+							service_path_cmp);
+			if (!lsvc)
+				continue;
 
-		if (g_strcmp0(path, eapp->path) != 0)
-			continue;
+			service = lsvc->data;
+			if (service->attr)
+				continue;
 
-		if (register_external_service(proxy) < 0) {
-			DBG("Inconsistent external service: %s", path);
-			continue;
+			service->attr = register_external_service(proxy);
+
+			DBG("External service: %s", path);
 		}
-
-		DBG("External service: %s", path);
 	}
 
 	return FALSE;
@@ -211,10 +256,12 @@ static DBusMessage *register_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct external_app *eapp;
+	struct service_data *service;
 	DBusMessageIter iter;
-	const char *path;
+	const char *path, *sender = dbus_message_get_sender(msg);
+	GSList *list;
 
-	DBG("Registering GATT Service");
+	DBG("Registering GATT Service: %s", sender);
 
 	if (!dbus_message_iter_init(msg, &iter))
 		return btd_error_invalid_args(msg);
@@ -224,14 +271,35 @@ static DBusMessage *register_service(DBusConnection *conn,
 
 	dbus_message_iter_get_basic(&iter, &path);
 
-	if (g_slist_find_custom(external_apps, path, external_app_path_cmp))
-		return btd_error_already_exists(msg);
+	/*
+	 * If we already have created a GDBusClient for the current
+	 * application, then we do not need another instance.
+	 */
+	list = g_slist_find_custom(external_apps, sender,
+						external_app_owner_cmp);
+	if (list) {
+		/* Additional services assigned to the same application */
+		eapp = list->data;
 
-	eapp = new_external_app(conn, dbus_message_get_sender(msg), path);
-	if (eapp == NULL)
-		return btd_error_failed(msg, "Not enough resources");
+		if (g_slist_find_custom(eapp->services, path,
+							service_path_cmp))
+			return btd_error_already_exists(msg);
 
-	external_apps = g_slist_prepend(external_apps, eapp);
+		if (eapp->register_timer > 0)
+			g_source_remove(eapp->register_timer);
+	} else {
+		/* First service of a given application */
+		eapp = new_external_app(conn, sender, path);
+		if (eapp == NULL)
+			return btd_error_failed(msg, "Not enough resources");
+
+		external_apps = g_slist_prepend(external_apps, eapp);
+
+	}
+
+	service = g_new0(struct service_data, 1);
+	service->path = g_strdup(path);
+	eapp->services = g_slist_prepend(eapp->services, service);
 
 	DBG("New app %p: %s", eapp, path);
 	eapp->register_timer = g_timeout_add_seconds(REGISTER_TIMER,
