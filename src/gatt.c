@@ -583,6 +583,20 @@ static bool validate_att_operation(GList *attr_node, uint8_t opcode)
 	 * search will return NULL.
 	 */
 	switch (opcode) {
+	case ATT_OP_WRITE_REQ:
+		if (attr == NULL)
+			return false;
+
+		if (attr->value[0] & GATT_CHR_PROP_WRITE)
+			return true;
+		break;
+	case ATT_OP_WRITE_CMD:
+		if (attr == NULL)
+			return false;
+
+		if (attr->value[0] & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
+			return true;
+		break;
 	case ATT_OP_READ_REQ:
 		if (attr == NULL)
 			return true;
@@ -688,6 +702,11 @@ static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
 
 	attr = list->data;
 
+	if (!validate_att_operation(list, ATT_OP_WRITE_CMD)) {
+		DBG("Attribute 0x%04x: Write Command not allowed", handle);
+		return;
+	}
+
 	if (attr->write_cb == NULL) {
 		DBG("Attribute 0x%04x: Write not allowed", handle);
 		return;
@@ -740,6 +759,11 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	attr = list->data;
 
 	if (attr->write_cb == NULL) {
+		send_error(sk, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
+		return;
+	}
+
+	if (!validate_att_operation(list, ATT_OP_WRITE_REQ)) {
 		send_error(sk, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
 		return;
 	}
