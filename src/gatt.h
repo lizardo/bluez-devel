@@ -80,6 +80,12 @@ typedef void (*btd_attr_write_t) (struct btd_attribute *attr,
  */
 struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid);
 
+/* btd_gatt_remove_service - Remove a service (along with all its
+ * characteristics) from the local attribute database.
+ * @service:	Service declaration attribute.
+ */
+void btd_gatt_remove_service(struct btd_attribute *service);
+
 /*
  * btd_gatt_add_char - Add a characteristic (declaration and value attributes)
  * to local attribute database.
