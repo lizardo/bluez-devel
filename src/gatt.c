@@ -153,6 +153,19 @@ static struct btd_attribute *new_const_attribute(const bt_uuid_t *type,
 	return attr;
 }
 
+static struct btd_attribute *new_attribute(const bt_uuid_t *type,
+						btd_attr_read_t read_cb,
+						btd_attr_write_t write_cb)
+{
+	struct btd_attribute *attr = g_new0(struct btd_attribute, 1);
+
+	attr->type = *type;
+	attr->read_cb = read_cb;
+	attr->write_cb = write_cb;
+
+	return attr;
+}
+
 static int local_database_add(uint16_t handle, struct btd_attribute *attr)
 {
 	attr->handle = handle;
@@ -275,10 +288,7 @@ struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties,
 	 * implementation (external entity).
 	 */
 
-	char_value = g_new0(struct btd_attribute, 1);
-	memcpy(&char_value->type, uuid, sizeof(char_value->type));
-	char_value->read_cb = read_cb;
-	char_value->write_cb = write_cb;
+	char_value = new_attribute(uuid, read_cb, write_cb);
 
 	if (local_database_add(next_handle, char_value) < 0)
 		goto fail;
@@ -300,6 +310,35 @@ fail:
 	g_free(char_value);
 
 	return NULL;
+}
+
+struct btd_attribute *btd_gatt_add_char_desc(bt_uuid_t *uuid,
+						btd_attr_read_t read_cb,
+						btd_attr_write_t write_cb)
+{
+	struct btd_attribute *attr;
+
+	/*
+	 * From Core SPEC 4.1 page 2184:
+	 * Characteristic descriptor declaration permissions are defined by a
+	 * higher layer profile or are implementation specific. A client shall
+	 * not assume all characteristic descriptor declarations are readable.
+	 *
+	 * The read/write callbacks presence will define the descriptor
+	 * permissions managed directly by the core. The upper layer can define
+	 * additional permissions constraints.
+	 */
+
+	attr = new_attribute(uuid, read_cb, write_cb);
+
+	if (local_database_add(next_handle, attr) < 0) {
+		g_free(attr);
+		return NULL;
+	}
+
+	next_handle = next_handle + 1;
+
+	return attr;
 }
 
 static void send_error(int sk, uint8_t opcode, uint16_t handle, uint8_t ecode)
