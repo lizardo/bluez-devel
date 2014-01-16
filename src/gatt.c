@@ -822,6 +822,89 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	attr->write_cb(attr, value, vlen, write_request_result, proc);
 }
 
+static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
+{
+	struct btd_attribute *attr;
+	size_t pairlen = 0, olen = 0, uuid_len;
+	uint16_t start, end;
+	uint8_t opdu[ATT_DEFAULT_LE_MTU];
+	uint8_t format = ATT_FIND_INFO_RESP_FMT_16BIT;
+	GList *list;
+
+	if (dec_find_info_req(ipdu, ilen, &start, &end) == 0) {
+		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		return;
+	}
+
+	if (start == 0x0000 || start > end) {
+		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_HANDLE);
+		return;
+	}
+
+	/* ATT command to implement Discover All Characteristic Descriptors.
+	 * handle-uuid pairs must be grouped based on UUIDs length.
+	 *
+	 * Packet formats:
+	 *  16-bit Blueototh UUID: 0x05 0x01 0xhhhh 2-octets ...
+	 * 128-bit Bluetooth UUID: 0x05 0x02 0xhhhh 16-octets
+	 *
+	 *
+	 * 0x05: ATT Opcode for Find Information Response
+	 * 0x01 or 0x02: Format 16 or 128-bit UUID
+	 * 0xhhhh: attribute handle
+	 */
+
+	for (list = local_attribute_db; list; list = g_list_next(list)) {
+		attr = list->data;
+
+		if (attr->handle < start)
+			continue;
+
+		if (attr->handle > end)
+			break;
+
+		uuid_len = (size_t) bt_uuid_len(&attr->type);
+
+		if (olen == 0) {
+
+			/* opcode and format */
+			olen = 2;
+
+			/* handle-uuid pair length */
+			pairlen = uuid_len + 2;
+
+			format = attr->type.type == BT_UUID16 ?
+					ATT_FIND_INFO_RESP_FMT_16BIT :
+					ATT_FIND_INFO_RESP_FMT_128BIT;
+		} else if (pairlen != uuid_len + 2)
+			/* Different UUID format after the first loop */
+			break;
+
+		/* Check it there space enough for another handle-uuid pair */
+		if (olen + pairlen > ATT_DEFAULT_LE_MTU)
+			break;
+
+		/* Copy attribute handle into opdu */
+		att_put_u16(attr->handle, &opdu[olen]);
+		olen += 2;
+
+		/* Copy attribute UUID into opdu */
+		att_put_uuid(attr->type, &opdu[olen]);
+		olen += uuid_len;
+	}
+
+	if (olen == 0) {
+		send_error(sk, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
+		return;
+	}
+
+	/* Set opcode and data format */
+	opdu[0] = ATT_OP_FIND_INFO_RESP;
+	opdu[1] = format;
+
+	write_pdu(sk, opdu, olen);
+}
+
 static bool channel_handler_cb(struct io *io, void *user_data)
 {
 	uint8_t ipdu[ATT_DEFAULT_LE_MTU];
@@ -841,7 +924,6 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 
 	/* Requests */
 	case ATT_OP_MTU_REQ:
-	case ATT_OP_FIND_INFO_REQ:
 	case ATT_OP_FIND_BY_TYPE_REQ:
 	case ATT_OP_READ_BLOB_REQ:
 	case ATT_OP_READ_MULTI_REQ:
@@ -865,6 +947,9 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 		break;
 	case ATT_OP_WRITE_REQ:
 		write_request(io, ipdu, ilen);
+		break;
+	case ATT_OP_FIND_INFO_REQ:
+		find_info_request(sk, ipdu, ilen);
 		break;
 
 	/* Responses */
