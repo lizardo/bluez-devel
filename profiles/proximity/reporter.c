@@ -122,7 +122,7 @@ static void register_tx_power(struct btd_adapter *adapter)
 
 	/* Power level characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
+	atval[0] = GATT_CHR_PROP_READ | GATT_CHR_PROP_NOTIFY;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(POWER_LEVEL_CHR_UUID, &atval[3]);
 	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
