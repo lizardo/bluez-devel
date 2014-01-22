@@ -70,6 +70,7 @@ struct procedure_data {
 static struct io *server_io;
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
+static struct btd_attribute *gatt;
 
 static void write_pdu(int sk, const uint8_t *pdu, size_t plen)
 {
@@ -883,6 +884,35 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	return true;
 }
 
+static struct btd_attribute *gatt_profile_add(void)
+{
+	struct btd_attribute *attr;
+	bt_uuid_t uuid;
+	uint8_t properties = GATT_CHR_PROP_INDICATE;
+
+	bt_uuid16_create(&uuid, GENERIC_ATTRIB_PROFILE_ID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return NULL;
+
+	/*
+	 * «Service Changed» characteristic is a control-point attribute.
+	 * CCC should be enabled by the clients to get indications when the
+	 * have changed. Permissions: No Authentication, No Authorization,
+	 * Not Readable, Not Writable.
+	 *
+	 * TODO: Manage CCC & indications when connections to bonded
+	 * devices are established.
+	 */
+	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
+	if (btd_gatt_add_char(&uuid, properties, NULL, NULL) == NULL) {
+		btd_gatt_remove_service(attr);
+		return NULL;
+	}
+
+	return attr;
+}
+
 void gatt_init(void)
 {
 	struct sockaddr_un uaddr  = {
@@ -892,6 +922,13 @@ void gatt_init(void)
 	int sk, err;
 
 	DBG("Starting GATT server");
+
+	/* Add mandatory GATT services: GATT */
+	gatt = gatt_profile_add();
+	if (!gatt) {
+		error("GATT: Can't add GATT Profile service!");
+		return;
+	}
 
 	gatt_dbus_manager_register();
 
