@@ -272,7 +272,7 @@ static uint8_t property_string2bitmask(DBusMessageIter *iter)
 	return prop_bitmask;
 }
 
-static void read_external_char_cb(struct btd_attribute *attr,
+static void read_proxy_cb(struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
 	DBusMessageIter iter, array;
@@ -393,7 +393,7 @@ static int register_external_descriptor(GDBusProxy *proxy)
 	if (bt_string_to_uuid(&btuuid, uuid) < 0)
 		return -EINVAL;
 
-	char_desc = btd_gatt_add_char_desc(&btuuid, NULL, NULL);
+	char_desc = btd_gatt_add_char_desc(&btuuid, read_proxy_cb, NULL);
 	if (char_desc == NULL)
 		return -EINVAL;
 
@@ -431,7 +431,7 @@ static int register_external_characteristic(GDBusProxy *proxy)
 		return -EINVAL;
 
 	if (prop_bitmask & GATT_CHR_PROP_READ)
-		read_cb =  read_external_char_cb;
+		read_cb =  read_proxy_cb;
 	else
 		read_cb = NULL;
 
