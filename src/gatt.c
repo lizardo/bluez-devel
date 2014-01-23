@@ -32,6 +32,7 @@
 
 #include <glib.h>
 
+#include "adapter.h"
 #include "log.h"
 #include "lib/uuid.h"
 #include "attrib/att.h"
@@ -70,7 +71,7 @@ struct procedure_data {
 static struct io *server_io;
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
-static struct btd_attribute *gatt;
+static struct btd_attribute *gatt, *gap;
 
 static void write_pdu(int sk, const uint8_t *pdu, size_t plen)
 {
@@ -884,6 +885,37 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	return true;
 }
 
+static void read_name_cb(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
+{
+	struct btd_adapter *adapter = btd_adapter_get_default();
+	const char *name = adapter ? btd_adapter_get_name(adapter) : "";
+
+	DBG("Reading GAP <<Device Name>>: %s", name);
+
+	result(0, (uint8_t *) name, strlen(name), user_data);
+}
+
+static struct btd_attribute *gap_profile_add(void)
+{
+	struct btd_attribute *attr;
+	bt_uuid_t uuid;
+	uint8_t properties = GATT_CHR_PROP_READ;
+
+	bt_uuid16_create(&uuid, GENERIC_ACCESS_PROFILE_ID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return NULL;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
+	if (!btd_gatt_add_char(&uuid, properties, read_name_cb, NULL)) {
+		btd_gatt_remove_service(attr);
+		return NULL;
+	}
+
+	return attr;
+}
+
 static struct btd_attribute *gatt_profile_add(void)
 {
 	struct btd_attribute *attr;
@@ -919,15 +951,22 @@ void gatt_init(void)
 		.sun_family     = AF_UNIX,
 		.sun_path       = "\0/bluetooth/unix_att",
 	};
-	int sk, err;
+	int sk = -1, err;
 
 	DBG("Starting GATT server");
+
+	/* Add mandatory GATT service: GAP */
+	gap = gap_profile_add();
+	if (!gap) {
+		error("GATT: Can't add GAP Profile service!");
+		goto fail;
+	}
 
 	/* Add mandatory GATT services: GATT */
 	gatt = gatt_profile_add();
 	if (!gatt) {
 		error("GATT: Can't add GATT Profile service!");
-		return;
+		goto fail;
 	}
 
 	gatt_dbus_manager_register();
@@ -936,26 +975,36 @@ void gatt_init(void)
 	if (sk < 0) {
 		err = errno;
 		error("ATT UNIX socket: %s(%d)", strerror(err), err);
-		return;
+		goto fail;
 	}
 
 	if (bind(sk, (struct sockaddr *) &uaddr, sizeof(uaddr)) < 0) {
 		err = errno;
 		error("binding ATT UNIX socket: %s(%d)", strerror(err), err);
-		close(sk);
-		return;
+		goto fail;
 	}
 
 	if (listen(sk, 5) < 0) {
 		err = errno;
 		error("listen ATT UNIX socket: %s(%d)", strerror(err), err);
-		close(sk);
-		return;
+		goto fail;
 	}
 
 	server_io = io_new(sk);
 	io_set_close_on_destroy(server_io, true);
 	io_set_read_handler(server_io, unix_accept_cb, NULL, NULL);
+
+	return;
+
+fail:
+	if (sk > 0)
+		close(sk);
+
+	if (gap)
+		btd_gatt_remove_service(gap);
+
+	if (gatt)
+		btd_gatt_remove_service(gatt);
 }
 
 void gatt_cleanup(void)
