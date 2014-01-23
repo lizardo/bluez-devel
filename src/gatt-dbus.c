@@ -312,7 +312,7 @@ static void read_proxy_cb(struct btd_attribute *attr,
 	result(0, value, len, user_data);
 }
 
-static void write_char_reply(const DBusError *derr, void *user_data)
+static void write_proxy_reply(const DBusError *derr, void *user_data)
 {
 	struct external_write_data *wdata = user_data;
 	int err = 0;
@@ -340,7 +340,7 @@ done:
 		wdata->result_cb(err, wdata->user_data);
 }
 
-static void write_external_char_cb(struct btd_attribute *attr,
+static void write_proxy_cb(struct btd_attribute *attr,
 					const uint8_t *value, size_t len,
 					btd_attr_write_result_t result,
 					void *user_data)
@@ -353,6 +353,15 @@ static void write_external_char_cb(struct btd_attribute *attr,
 		return;
 	}
 
+	/*
+	 * "result" callback defines if the core wants to receive the
+	 * operation result, allowing to select ATT Write Request or Write
+	 * Command. Descriptors requires Write Request operation. For
+	 * Characteristics, the implementation will define which operations
+	 * are allowed based on the properties/flags.
+	 * TODO: Write Long Characteristics/Descriptors.
+	 */
+
 	if (result) {
 		struct external_write_data *wdata;
 
@@ -361,7 +370,7 @@ static void write_external_char_cb(struct btd_attribute *attr,
 		wdata->user_data = user_data;
 
 		g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
-						value, len, write_char_reply,
+						value, len, write_proxy_reply,
 						wdata, g_free);
 	} else {
 		/*
@@ -370,11 +379,11 @@ static void write_external_char_cb(struct btd_attribute *attr,
 		 * the remote doesn't receive ATT response.
 		 */
 		g_dbus_proxy_set_property_array(proxy, "Value", DBUS_TYPE_BYTE,
-						value, len, write_char_reply,
+						value, len, write_proxy_reply,
 						NULL, NULL);
 	}
 
-	DBG("Server: Write characteristic callback %s",
+	DBG("Server: Write attribute callback %s",
 					g_dbus_proxy_get_path(proxy));
 }
 
@@ -393,7 +402,12 @@ static int register_external_descriptor(GDBusProxy *proxy)
 	if (bt_string_to_uuid(&btuuid, uuid) < 0)
 		return -EINVAL;
 
-	char_desc = btd_gatt_add_char_desc(&btuuid, read_proxy_cb, NULL);
+	/*
+	 * Permissions can't be detected beforehand, let the upper layer
+	 * manage errors if some operation is not allowed.
+	 */
+	char_desc = btd_gatt_add_char_desc(&btuuid, read_proxy_cb,
+							write_proxy_cb);
 	if (char_desc == NULL)
 		return -EINVAL;
 
@@ -437,7 +451,7 @@ static int register_external_characteristic(GDBusProxy *proxy)
 
 	if (prop_bitmask & GATT_CHR_PROP_WRITE_WITHOUT_RESP ||
 			prop_bitmask & GATT_CHR_PROP_WRITE)
-		write_cb =  write_external_char_cb;
+		write_cb =  write_proxy_cb;
 	else
 		write_cb = NULL;
 
