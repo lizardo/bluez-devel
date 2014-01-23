@@ -49,6 +49,7 @@
 #define GATT_MGR_IFACE			"org.bluez.GattManager1"
 #define SERVICE_IFACE			"org.bluez.GattService1"
 #define CHARACTERISTIC_IFACE		"org.bluez.GattCharacteristic1"
+#define DESCRIPTOR_IFACE		"org.bluez.GattDescriptor1"
 
 #define REGISTER_TIMER         1
 
@@ -114,7 +115,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	DBG("path %s iface %s", path, interface);
 
 	if (g_strcmp0(interface, CHARACTERISTIC_IFACE) != 0 &&
-		g_strcmp0(interface, SERVICE_IFACE) != 0)
+		g_strcmp0(interface, SERVICE_IFACE) != 0 &&
+		g_strcmp0(interface, DESCRIPTOR_IFACE) != 0)
 		return;
 
 	/*
@@ -376,6 +378,32 @@ static void write_external_char_cb(struct btd_attribute *attr,
 					g_dbus_proxy_get_path(proxy));
 }
 
+static int register_external_descriptor(GDBusProxy *proxy)
+{
+	DBusMessageIter iter;
+	const char *uuid;
+	bt_uuid_t btuuid;
+	struct btd_attribute *char_desc;
+
+	if (!g_dbus_proxy_get_property(proxy, "UUID", &iter))
+		return -EINVAL;
+
+	dbus_message_iter_get_basic(&iter, &uuid);
+
+	if (bt_string_to_uuid(&btuuid, uuid) < 0)
+		return -EINVAL;
+
+	char_desc = btd_gatt_add_char_desc(&btuuid, NULL, NULL);
+	if (char_desc == NULL)
+		return -EINVAL;
+
+	/* Attribute to Proxy hash table */
+	DBG("Adding proxy %p", proxy);
+	g_hash_table_insert(proxy_hash, char_desc, g_dbus_proxy_ref(proxy));
+
+	return 0;
+}
+
 static int register_external_characteristic(GDBusProxy *proxy)
 {
 	DBusMessageIter iter;
@@ -452,6 +480,7 @@ static gboolean finish_register(gpointer user_data)
 {
 	struct external_app *eapp = user_data;
 	struct service_data *service = NULL;
+	const char *chr_path = NULL;
 	GSList *lprx, *lsvc;
 
 	/*
@@ -478,6 +507,7 @@ static gboolean finish_register(gpointer user_data)
 			 * register_service().
 			 */
 			service = NULL;
+			chr_path = NULL;
 			lsvc = g_slist_find_custom(eapp->services, path,
 							service_path_cmp);
 			if (!lsvc)
@@ -494,11 +524,23 @@ static gboolean finish_register(gpointer user_data)
 			g_strcmp0(CHARACTERISTIC_IFACE, interface) == 0 &&
 			g_str_has_prefix(path, service->path) == TRUE) {
 
-			if (register_external_characteristic(proxy) < 0)
+			if (register_external_characteristic(proxy) < 0) {
 				DBG("Inconsistent external characteristic: %s",
 									path);
-			else
+				chr_path = path;
+			} else {
 				DBG("External characteristic: %s", path);
+				chr_path = NULL;
+			}
+		} else if (chr_path &&
+				g_strcmp0(DESCRIPTOR_IFACE, interface) == 0 &&
+				g_str_has_prefix(path, chr_path) == TRUE) {
+
+			if (register_external_descriptor(proxy) < 0)
+				DBG("Inconsistent external descriptor: %s",
+								path);
+			else
+				DBG("External descriptor: %s", path);
 		}
 	}
 
