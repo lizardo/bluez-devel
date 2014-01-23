@@ -28,6 +28,7 @@
 #include <glib.h>
 #include <stdbool.h>
 
+#include "adapter.h"
 #include "log.h"
 #include "lib/uuid.h"
 #include "attrib/att.h"
@@ -56,7 +57,7 @@ struct btd_attribute {
 
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
-static struct btd_attribute *gatt;
+static struct btd_attribute *gatt, *gap;
 
 static inline void put_uuid_le(const bt_uuid_t *src, void *dst)
 {
@@ -262,6 +263,37 @@ fail:
 	return NULL;
 }
 
+static void read_name_cb(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
+{
+	struct btd_adapter *adapter = btd_adapter_get_default();
+	const char *name = adapter ? btd_adapter_get_name(adapter) : "";
+
+	DBG("Reading GAP <<Device Name>>: %s", name);
+
+	result(0, (uint8_t *) name, strlen(name), user_data);
+}
+
+static struct btd_attribute *gap_profile_add(void)
+{
+	struct btd_attribute *attr;
+	bt_uuid_t uuid;
+	uint8_t properties = GATT_CHR_PROP_READ;
+
+	bt_uuid16_create(&uuid, GENERIC_ACCESS_PROFILE_ID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return NULL;
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
+	if (!btd_gatt_add_char(&uuid, properties, read_name_cb, NULL)) {
+		btd_gatt_remove_service(attr);
+		return NULL;
+	}
+
+	return attr;
+}
+
 static struct btd_attribute *gatt_profile_add(void)
 {
 	struct btd_attribute *attr;
@@ -295,14 +327,30 @@ void gatt_init(void)
 {
 	DBG("Starting GATT server");
 
+	/* Add mandatory GATT service: GAP */
+	gap = gap_profile_add();
+	if (!gap) {
+		error("GATT: Can't add GAP Profile service!");
+		goto fail;
+	}
+
 	/* Add mandatory GATT services: GATT */
 	gatt = gatt_profile_add();
 	if (!gatt) {
 		error("GATT: Can't add GATT Profile service!");
-		return;
+		goto fail;
 	}
 
 	gatt_dbus_manager_register();
+
+	return;
+
+fail:
+	if (gap)
+		btd_gatt_remove_service(gap);
+
+	if (gatt)
+		btd_gatt_remove_service(gatt);
 }
 
 void gatt_cleanup(void)
