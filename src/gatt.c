@@ -25,11 +25,14 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 #include <glib.h>
 
 #include "adapter.h"
@@ -113,7 +116,8 @@ static int find_by_handle(const void *a, const void *b)
 	return attr->handle - GPOINTER_TO_UINT(b);
 }
 
-static void read_ccc_cb(struct btd_attribute *attr,
+static void read_ccc_cb(struct btd_device *device,
+				struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
 	DBG("Read CCC %p", attr);
@@ -141,7 +145,7 @@ void btd_gatt_read_attribute(struct btd_attribute *attr,
 	 * checked.
 	 */
 	if (attr->read_cb)
-		attr->read_cb(attr, result, user_data);
+		attr->read_cb(NULL, attr, result, user_data);
 	else if (attr->value_len > 0)
 		result(0, attr->value, attr->value_len, user_data);
 	else
@@ -694,8 +698,12 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	struct procedure_data *proc;
 	uint16_t handle;
 	GList *list;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct btd_attribute *attr;
-	int sk = io_get_fd(io);
+	struct sockaddr_l2 l2addr;
+	socklen_t l2len;
+	int err, sk = io_get_fd(io);
 
 	if (dec_read_req(ipdu, ilen, &handle) == 0) {
 		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
@@ -742,7 +750,32 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	proc->io = io;
 	proc->handle = handle;
 
-	attr->read_cb(attr, read_request_result, proc);
+	l2len = sizeof(l2addr);
+	memset(&l2addr, 0, sizeof(l2addr));
+	if (getsockname(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
+		/*
+		 * If this system call fails, there are something more
+		 * critical. It doesn't make sense to reply or continue
+		 * any GATT sub-procedure.
+		 */
+		err = errno;
+		error("getsockname(): %s(%d)", strerror(err), err);
+		/* TODO: return */
+	}
+
+	adapter = adapter_find(&l2addr.l2_bdaddr);
+
+	l2len = sizeof(l2addr);
+	memset(&l2addr, 0, sizeof(l2addr));
+	if (getpeername(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
+		err = errno;
+		error("getpeername(): %s(%d)", strerror(err), err);
+		/* TODO: return */
+	}
+
+	device = btd_adapter_get_device(adapter, &l2addr.l2_bdaddr,
+						l2addr.l2_bdaddr_type);
+	attr->read_cb(device, attr, read_request_result, proc);
 }
 
 static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
@@ -1032,7 +1065,7 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	return true;
 }
 
-static void read_name_cb(struct btd_attribute *attr,
+static void read_name_cb(struct btd_device *device, struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
 	struct btd_adapter *adapter = btd_adapter_get_default();

@@ -272,7 +272,8 @@ static uint8_t property_string2bitmask(DBusMessageIter *iter)
 	return prop_bitmask;
 }
 
-static void read_proxy_cb(struct btd_attribute *attr,
+static void read_proxy_cb(struct btd_device *device,
+				struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
 	DBusMessageIter iter, array;

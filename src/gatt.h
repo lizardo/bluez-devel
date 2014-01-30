@@ -37,7 +37,8 @@ void gatt_cleanup(void);
  */
 typedef void (*btd_attr_read_result_t) (int err, uint8_t *value, size_t len,
 							void *user_data);
-typedef void (*btd_attr_read_t) (struct btd_attribute *attr,
+typedef void (*btd_attr_read_t) (struct btd_device *device,
+						struct btd_attribute *attr,
 						btd_attr_read_result_t result,
 						void *user_data);
 /*
