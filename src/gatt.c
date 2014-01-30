@@ -113,6 +113,20 @@ static int find_by_handle(const void *a, const void *b)
 	return attr->handle - GPOINTER_TO_UINT(b);
 }
 
+static void read_ccc_cb(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
+{
+	DBG("Read CCC %p", attr);
+}
+
+static void write_ccc_cb(struct btd_attribute *attr,
+				const uint8_t *value, size_t len,
+				btd_attr_write_result_t result,
+				void *user_data)
+{
+	DBG("Write CCC %p", attr);
+}
+
 void btd_gatt_read_attribute(struct btd_attribute *attr,
 					btd_attr_read_result_t result,
 					void *user_data)
@@ -302,6 +316,15 @@ struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties,
 	 * handle. However, for remote attribute this assumption is not valid.
 	 */
 	att_put_u16(char_value->handle, &char_decl->value[1]);
+
+	if (properties & (GATT_CHR_PROP_INDICATE | GATT_CHR_PROP_NOTIFY)) {
+		bt_uuid_t cfg_uuid;
+
+		bt_uuid16_create(&cfg_uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+		if (btd_gatt_add_char_desc(&cfg_uuid, read_ccc_cb,
+							write_ccc_cb) == NULL)
+			goto fail;
+	}
 
 	return char_value;
 
