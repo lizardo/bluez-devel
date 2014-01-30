@@ -274,6 +274,38 @@ static void read_name_cb(struct btd_attribute *attr,
 	result(0, (uint8_t *) name, strlen(name), user_data);
 }
 
+static uint16_t appearance_from_class(uint16_t dev_class)
+{
+	switch ((dev_class & 0x1f00) >> 8) {
+	case 0x01:
+		/* Generic Computer */
+		return 128;
+	case 0x02:
+		/* Generic Phone */
+		return 64;
+	}
+
+	/* FIXME: We should build GAP appearance from the currently running
+	 * GATT services. */
+
+	/* Unknown */
+	return 0;
+}
+
+static void read_appearance_cb(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
+{
+	struct btd_adapter *adapter = btd_adapter_get_default();
+	uint32_t dev_class = adapter ? btd_adapter_get_class(adapter) : 0x0000;
+	uint16_t appearance = appearance_from_class(dev_class);
+	uint8_t atval[2];
+
+	DBG("Reading GAP <<Appearance>>: 0x%04x", appearance);
+	put_le16(appearance, atval);
+
+	result(0, atval, sizeof(atval), user_data);
+}
+
 static struct btd_attribute *gap_profile_add(void)
 {
 	struct btd_attribute *attr;
@@ -316,6 +348,12 @@ static struct btd_attribute *gatt_profile_add(void)
 	 */
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
 	if (!btd_gatt_add_char(&uuid, properties, NULL, NULL)) {
+		btd_gatt_remove_service(attr);
+		return NULL;
+	}
+
+	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
+	if (!btd_gatt_add_char(&uuid, properties, read_appearance_cb, NULL)) {
 		btd_gatt_remove_service(attr);
 		return NULL;
 	}
