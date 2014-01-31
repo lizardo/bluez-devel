@@ -79,6 +79,7 @@ static GSList *iolist;
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
 static struct btd_attribute *gatt, *gap;
+static struct btd_attribute *service_changed;
 
 static void write_pdu(int sk, const uint8_t *pdu, size_t plen)
 {
@@ -1246,6 +1247,22 @@ static void channel_watch_destroy(void *user_data)
 	iolist = g_slist_remove(iolist, io);
 }
 
+static bool write_service_changed_cb(struct io *io, void *user_data)
+{
+	uint8_t range[] = { 0x01, 0x00, 0xff, 0xff};
+	uint8_t opdu[ATT_DEFAULT_LE_MTU];
+	int sk = io_get_fd(io);
+	size_t olen;
+
+	DBG("ATT: Sending <<Service Changed>>");
+
+	olen = enc_indication(service_changed->handle, range, sizeof(range),
+							opdu, sizeof(opdu));
+	write_pdu(sk, opdu, olen);
+
+	return false;
+}
+
 static bool unix_accept_cb(struct io *io, void *user_data)
 {
 	struct sockaddr_un uaddr;
@@ -1270,6 +1287,13 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	io_set_close_on_destroy(nio, true);
 	io_set_read_handler(nio, channel_handler_cb, nio,
 						channel_watch_destroy);
+
+	/*
+	 * While the support for Service Changed in not implemented, send
+	 * indication when the link is established ignoring if the device is
+	 * bonded or not.
+	 */
+	io_set_write_handler(nio, write_service_changed_cb, NULL, NULL);
 
 	return true;
 }
@@ -1326,7 +1350,8 @@ static struct btd_attribute *gatt_profile_add(void)
 	 * devices are established.
 	 */
 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVICE_CHANGED);
-	if (btd_gatt_add_char(&uuid, properties, NULL, NULL) == NULL) {
+	service_changed = btd_gatt_add_char(&uuid, properties, NULL, NULL);
+	if (!service_changed) {
 		btd_gatt_remove_service(attr);
 		return NULL;
 	}
