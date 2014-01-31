@@ -787,7 +787,8 @@ static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
 static bool validate_att_operation(GList *attr_node, uint8_t opcode)
 {
 	GList *char_decl_node;
-	struct btd_attribute *attr;
+	struct btd_attribute *decl_attr;
+	bool is_descriptor = false;
 
 	/*
 	 * All declarations are readable, and NOT writeable, some descriptors
@@ -798,33 +799,47 @@ static bool validate_att_operation(GList *attr_node, uint8_t opcode)
 	 */
 
 	char_decl_node = get_char_decl_from_attr(attr_node);
-	attr = (char_decl_node ? char_decl_node->data : NULL);
+	decl_attr = (char_decl_node ? char_decl_node->data : NULL);
+
+	if (decl_attr) {
+		uint16_t handle = att_get_u16(decl_attr->value + 1);
+		struct btd_attribute *attr = attr_node->data;
+		is_descriptor = attr->handle != handle;
+	}
+
+	if (is_descriptor) {
+		/*
+		 * Allow reading or writing descriptor. The caller must
+		 * check if read or write callback is available.
+		 */
+		return true;
+	}
 
 	/*
-	 * "attr" contains the reference to a characteristic DECLARATION when
-	 * the given attribute node is a characteristic VALUE, otherwise the
-	 * search will return NULL.
+	 * "decl_attr" contains the reference to a characteristic DECLARATION when
+	 * the given attribute node is a characteristic VALUE or descriptor,
+	 * otherwise the search will return NULL.
 	 */
 	switch (opcode) {
 	case ATT_OP_WRITE_REQ:
-		if (attr == NULL)
+		if (decl_attr == NULL)
 			return false;
 
-		if (attr->value[0] & GATT_CHR_PROP_WRITE)
+		if (decl_attr->value[0] & GATT_CHR_PROP_WRITE)
 			return true;
 		break;
 	case ATT_OP_WRITE_CMD:
-		if (attr == NULL)
+		if (decl_attr == NULL)
 			return false;
 
-		if (attr->value[0] & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
+		if (decl_attr->value[0] & GATT_CHR_PROP_WRITE_WITHOUT_RESP)
 			return true;
 		break;
 	case ATT_OP_READ_REQ:
-		if (attr == NULL)
+		if (decl_attr == NULL)
 			return true;
 
-		if (attr->value[0] & GATT_CHR_PROP_READ)
+		if (decl_attr->value[0] & GATT_CHR_PROP_READ)
 			return true;
 	}
 
