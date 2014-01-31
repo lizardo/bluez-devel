@@ -341,7 +341,8 @@ done:
 		wdata->result_cb(err, wdata->user_data);
 }
 
-static void write_proxy_cb(struct btd_attribute *attr,
+static void write_proxy_cb(struct btd_device *device,
+					struct btd_attribute *attr,
 					const uint8_t *value, size_t len,
 					btd_attr_write_result_t result,
 					void *user_data)

@@ -48,7 +48,8 @@ typedef void (*btd_attr_read_t) (struct btd_device *device,
  * @user_data:	user_data passed in btd_attr_write_t callback
  */
 typedef void (*btd_attr_write_result_t) (int err, void *user_data);
-typedef void (*btd_attr_write_t) (struct btd_attribute *attr,
+typedef void (*btd_attr_write_t) (struct btd_device *device,
+					struct btd_attribute *attr,
 					const uint8_t *value, size_t len,
 					btd_attr_write_result_t result,
 					void *user_data);

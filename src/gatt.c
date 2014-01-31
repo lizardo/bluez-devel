@@ -117,6 +117,41 @@ static int find_by_handle(const void *a, const void *b)
 	return attr->handle - GPOINTER_TO_UINT(b);
 }
 
+static struct btd_device *sock_get_device(int sk)
+{
+	struct btd_adapter *adapter;
+	struct sockaddr_l2 l2addr;
+	socklen_t l2len;
+	int err;
+
+	l2len = sizeof(l2addr);
+	memset(&l2addr, 0, sizeof(l2addr));
+	if (getsockname(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
+		/*
+		 * If this system call fails, there are something more
+		 * critical. It doesn't make sense to reply or continue
+		 * any GATT sub-procedure.
+		 */
+		err = errno;
+		error("getsockname(): %s(%d)", strerror(err), err);
+		/* TODO: return */
+	}
+
+	adapter = adapter_find(&l2addr.l2_bdaddr);
+
+	l2len = sizeof(l2addr);
+	memset(&l2addr, 0, sizeof(l2addr));
+	if (getpeername(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
+		err = errno;
+		error("getpeername(): %s(%d)", strerror(err), err);
+		/* TODO: return */
+	}
+
+	return btd_adapter_get_device(adapter, &l2addr.l2_bdaddr,
+						l2addr.l2_bdaddr_type);
+
+}
+
 static GList *get_char_decl_from_attr(GList *attr_node)
 {
 	GList *char_decl_node;
@@ -200,7 +235,8 @@ static void read_ccc_cb(struct btd_device *device,
 	result(0, cccval, sizeof(cccval), user_data);
 }
 
-static void write_ccc_cb(struct btd_attribute *attr,
+static void write_ccc_cb(struct btd_device *device,
+				struct btd_attribute *attr,
 				const uint8_t *value, size_t len,
 				btd_attr_write_result_t result,
 				void *user_data)
@@ -753,12 +789,9 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	struct procedure_data *proc;
 	uint16_t handle;
 	GList *list;
-	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct btd_attribute *attr;
-	struct sockaddr_l2 l2addr;
-	socklen_t l2len;
-	int err, sk = io_get_fd(io);
+	int sk = io_get_fd(io);
 
 	if (dec_read_req(ipdu, ilen, &handle) == 0) {
 		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
@@ -805,31 +838,7 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	proc->io = io;
 	proc->handle = handle;
 
-	l2len = sizeof(l2addr);
-	memset(&l2addr, 0, sizeof(l2addr));
-	if (getsockname(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
-		/*
-		 * If this system call fails, there are something more
-		 * critical. It doesn't make sense to reply or continue
-		 * any GATT sub-procedure.
-		 */
-		err = errno;
-		error("getsockname(): %s(%d)", strerror(err), err);
-		/* TODO: return */
-	}
-
-	adapter = adapter_find(&l2addr.l2_bdaddr);
-
-	l2len = sizeof(l2addr);
-	memset(&l2addr, 0, sizeof(l2addr));
-	if (getpeername(sk, (struct sockaddr *) &l2addr, &l2len) == 0) {
-		err = errno;
-		error("getpeername(): %s(%d)", strerror(err), err);
-		/* TODO: return */
-	}
-
-	device = btd_adapter_get_device(adapter, &l2addr.l2_bdaddr,
-						l2addr.l2_bdaddr_type);
+	device = sock_get_device(sk);
 	attr->read_cb(device, attr, read_request_result, proc);
 }
 
@@ -837,6 +846,7 @@ static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
 {
 	uint16_t handle;
 	GList *list;
+	struct btd_device *device;
 	struct btd_attribute *attr;
 	size_t vlen;
 	uint8_t value[ATT_DEFAULT_LE_MTU];
@@ -864,7 +874,8 @@ static void write_cmd(int sk, const uint8_t *ipdu, size_t ilen)
 		return;
 	}
 
-	attr->write_cb(attr, value, vlen, NULL, NULL);
+	device = sock_get_device(sk);
+	attr->write_cb(device, attr, value, vlen, NULL, NULL);
 }
 
 static void write_request_result(int err, void *user_data)
@@ -890,6 +901,7 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 {
 	struct procedure_data *proc;
 	struct btd_attribute *attr;
+	struct btd_device *device;
 	GList *list;
 	size_t vlen;
 	uint16_t handle;
@@ -930,7 +942,8 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	proc->handle = handle;
 
 	DBG("Write Request (0x%04X)", proc->handle);
-	attr->write_cb(attr, value, vlen, write_request_result, proc);
+	device = sock_get_device(sk);
+	attr->write_cb(device, attr, value, vlen, write_request_result, proc);
 }
 
 static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
