@@ -36,6 +36,7 @@
 #include <glib.h>
 
 #include "adapter.h"
+#include "device.h"
 #include "log.h"
 #include "lib/uuid.h"
 #include "attrib/att.h"
@@ -116,11 +117,87 @@ static int find_by_handle(const void *a, const void *b)
 	return attr->handle - GPOINTER_TO_UINT(b);
 }
 
+static GList *get_char_decl_from_attr(GList *attr_node)
+{
+	GList *char_decl_node;
+	struct btd_attribute *attr;
+
+	/*
+	 * If any declaration is given (instead of a characteristic value), the
+	 * previous attribute is always different from a characteristic declaration.
+	 * A characteristic DECLARATION is always followed by a characteristic VALUE
+	 * attribute.
+	 */
+	char_decl_node = g_list_previous(attr_node);
+	if (char_decl_node == NULL)
+		return NULL;
+
+	attr = char_decl_node->data;
+	if (bt_uuid_cmp(&chr_uuid, &attr->type) != 0)
+		return NULL;
+
+	return char_decl_node;
+}
+
+static int read_ccc(struct btd_device *device, const char *key, uint16_t *value)
+{
+	char *filename;
+	GKeyFile *key_file = g_key_file_new();
+	gboolean ret;
+
+	/* FIXME: Development purpose only. Remove it later. */
+	if (!device)
+		filename = g_strdup("/tmp/unix/gatt-settings");
+	else
+		filename = btd_device_get_storage_path(device, "gatt-settings");
+
+	ret = g_key_file_load_from_file(key_file, filename, 0, NULL);
+	if (ret == FALSE)
+		goto done;
+
+	*value = g_key_file_get_integer(key_file, "CCC", key, NULL);
+
+	DBG("Read CCC handle: %s value: 0x%04x", key, *value);
+
+done:
+	g_free(filename);
+	g_key_file_free(key_file);
+
+	return (ret ? 0 : -ENOENT);
+}
+
 static void read_ccc_cb(struct btd_device *device,
 				struct btd_attribute *attr,
 				btd_attr_read_result_t result, void *user_data)
 {
-	DBG("Read CCC %p", attr);
+
+	GList *decl, *list = g_list_find(local_attribute_db, attr);
+	struct btd_attribute *decl_attr;
+	uint16_t value_handle, cccint = 0;
+	uint8_t cccval[] = { 0x00, 0x00 };
+	char key[6];
+
+	/*
+	 * When notification or indication arrives, it contains the handle of
+	 * Characteristic Attribute value. In order to simplify the logic, the
+	 * CCC storage uses the Attribute Characteristic value handle as key
+	 * instead of using the Descriptor handle.
+	 */
+
+	decl = get_char_decl_from_attr(list);
+	decl_attr = decl->data;
+
+	value_handle = att_get_u16(decl_attr->value + 1);
+
+	sprintf(key, "0x%04X", value_handle);
+
+	read_ccc(device, key, &cccint);
+
+	DBG("Read CCC %p handle: 0x%04x value: 0x%04x", attr, value_handle,
+								cccint);
+
+	att_put_u16(cccint, cccval);
+	result(0, cccval, sizeof(cccval), user_data);
 }
 
 static void write_ccc_cb(struct btd_attribute *attr,
@@ -605,28 +682,6 @@ static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
 
 	attr = proc->match->data;
 	read_by_type_result(sk, attr->value, attr->value_len, proc);
-}
-
-static GList *get_char_decl_from_attr(GList *attr_node)
-{
-	GList *char_decl_node;
-	struct btd_attribute *attr;
-
-	/*
-	 * If any declaration is given (instead of a characteristic value), the
-	 * previous attribute is always different from a characteristic declaration.
-	 * A characteristic DECLARATION is always followed by a characteristic VALUE
-	 * attribute.
-	 */
-	char_decl_node = g_list_previous(attr_node);
-	if (char_decl_node == NULL)
-		return NULL;
-
-	attr = char_decl_node->data;
-	if (bt_uuid_cmp(&chr_uuid, &attr->type) != 0)
-		return NULL;
-
-	return char_decl_node;
 }
 
 static bool validate_att_operation(GList *attr_node, uint8_t opcode)
