@@ -75,6 +75,7 @@ struct procedure_data {
 };
 
 static struct io *server_io;
+static GSList *iolist;
 static GList *local_attribute_db;
 static uint16_t next_handle = 0x0001;
 static struct btd_attribute *gatt, *gap;
@@ -327,6 +328,64 @@ void btd_gatt_read_attribute(struct btd_attribute *attr,
 		result(0, attr->value, attr->value_len, user_data);
 	else
 		result(EPERM, NULL, 0, user_data);
+}
+
+void btd_gatt_write_attribute(struct btd_attribute *attr,
+				uint8_t *value, size_t len,
+				btd_attr_write_result_t result,
+				void *user_data)
+{
+	GSList *list;
+	char key[6];
+
+	/*
+	 * Supports writting LOCAL attributes only. If this function gets
+	 * called means that PropertyChanged was received. The external
+	 * application doesn't control the connected devices. Here, we check
+	 * if it is necessary to send notification or indication.
+	 *
+	 * Assuming that the API is being used properly, the given attribute
+	 * MUST be characteristic "Value". It doesn't make sense to change
+	 * attribute value of other types.
+	 *
+	 * The current API doesn't support notifying when and who received the
+	 * ATT notification/indication.
+	 */
+
+	if (!iolist) {
+		DBG("No peers connected to send notification or indication");
+		if (result)
+			result(0, user_data);
+		return;
+	}
+
+	sprintf(key, "0x%04X", attr->handle);
+
+	DBG("Writing attribute: %s", key);
+
+	for (list = iolist; list; list = g_slist_next(list)) {
+		uint8_t opdu[ATT_DEFAULT_LE_MTU];
+		size_t olen;
+		struct io *io = list->data;
+		int sk = io_get_fd(io);
+		struct btd_device *device = sock_get_device(sk);
+		uint16_t ccc;
+
+		if (read_ccc(device, key, &ccc) < 0)
+			continue;
+
+		if (ccc & GATT_CLIENT_CHARAC_CFG_IND_BIT)
+			olen = enc_indication(attr->handle, value, len,
+							opdu, sizeof(opdu));
+		else
+			olen = enc_notification(attr->handle, value, len,
+							opdu, sizeof(opdu));
+
+		write_pdu(sk, opdu, olen);
+	}
+
+	if (result)
+		result(0, user_data);
 }
 
 /*
@@ -1184,6 +1243,7 @@ static void channel_watch_destroy(void *user_data)
 	struct io *io = user_data;
 
 	io_destroy(io);
+	iolist = g_slist_remove(iolist, io);
 }
 
 static bool unix_accept_cb(struct io *io, void *user_data)
@@ -1204,6 +1264,8 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 
 	DBG("ATT UNIX socket: %d", nsk);
 	nio = io_new(nsk);
+
+	iolist = g_slist_append(iolist, nio);
 
 	io_set_close_on_destroy(nio, true);
 	io_set_read_handler(nio, channel_handler_cb, nio,

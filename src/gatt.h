@@ -107,3 +107,15 @@ struct btd_attribute *btd_gatt_add_char_desc(bt_uuid_t *uuid,
 void btd_gatt_read_attribute(struct btd_attribute *attr,
 					btd_attr_read_result_t result,
 					void *user_data);
+
+/* btd_gatt_write_attribute - Write the value of an attribute.
+ * @attr:	Attribute to be written.
+ * @value:	Value to be written.
+ * @len:	Length of the value.
+ * @result:	Callback function to be called with the result.
+ * @user_data:	Data to be passed to the result callback function.
+ */
+void btd_gatt_write_attribute(struct btd_attribute *attr,
+				uint8_t *value, size_t len,
+				btd_attr_write_result_t result,
+				void *user_data);
