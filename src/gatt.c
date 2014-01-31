@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 
 #include <bluetooth/bluetooth.h>
@@ -44,6 +45,7 @@
 #include "attrib/gatt.h"
 #include "src/shared/io.h"
 
+#include "textfile.h"
 #include "gatt-dbus.h"
 #include "gatt.h"
 
@@ -155,23 +157,24 @@ static struct btd_device *sock_get_device(int sk)
 static GList *get_char_decl_from_attr(GList *attr_node)
 {
 	GList *char_decl_node;
-	struct btd_attribute *attr;
-
 	/*
 	 * If any declaration is given (instead of a characteristic value), the
 	 * previous attribute is always different from a characteristic declaration.
 	 * A characteristic DECLARATION is always followed by a characteristic VALUE
 	 * attribute.
 	 */
+
 	char_decl_node = g_list_previous(attr_node);
-	if (char_decl_node == NULL)
-		return NULL;
+	while (char_decl_node) {
+		struct btd_attribute *attr = char_decl_node->data;
 
-	attr = char_decl_node->data;
-	if (bt_uuid_cmp(&chr_uuid, &attr->type) != 0)
-		return NULL;
+		if (bt_uuid_cmp(&chr_uuid, &attr->type) == 0)
+			return char_decl_node;
 
-	return char_decl_node;
+		char_decl_node = g_list_previous(char_decl_node);
+	}
+
+	return NULL;
 }
 
 static int read_ccc(struct btd_device *device, const char *key, uint16_t *value)
@@ -235,13 +238,74 @@ static void read_ccc_cb(struct btd_device *device,
 	result(0, cccval, sizeof(cccval), user_data);
 }
 
+static int write_ccc(struct btd_device *device, const char *key, uint16_t ccc)
+{
+	GKeyFile *key_file;
+	char *filename, *data;
+	gboolean ret = FALSE;
+	size_t rlen;
+
+	/* FIXME: Development purpose only. Remove it later. */
+	if (device)
+		filename = btd_device_get_storage_path(device, "gatt-settings");
+	else
+		filename = g_strdup("/tmp/unix/gatt-settings");
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	g_key_file_set_integer(key_file, "CCC", key, ccc);
+	data = g_key_file_to_data(key_file, &rlen, NULL);
+	if (rlen > 0) {
+		create_file(filename, S_IRUSR | S_IWUSR);
+		ret = g_file_set_contents(filename, data, rlen, NULL);
+	}
+
+	g_free(data);
+	g_free(filename);
+	g_key_file_free(key_file);
+
+	return (ret ? 0 : -EIO);
+}
+
 static void write_ccc_cb(struct btd_device *device,
 				struct btd_attribute *attr,
 				const uint8_t *value, size_t len,
 				btd_attr_write_result_t result,
 				void *user_data)
 {
-	DBG("Write CCC %p", attr);
+	GList *decl, *list = g_list_find(local_attribute_db, attr);
+	struct btd_attribute *decl_attr;
+	uint16_t handle, ccc;
+	char key[6];
+
+	if (len != 2) {
+		DBG("Invalid size for Characteristic Configuration Bits");
+		if (result)
+			result(EINVAL, user_data);
+		return;
+	}
+
+	/*
+	 * When notification or indication arrives, it contains the handle of
+	 * Characteristic Attribute value. In order to simplify the logic, the
+	 * CCC storage uses the Attribute Characteristic value handle as key
+	 * instead of using the Descriptor handle.
+	 */
+
+	decl = get_char_decl_from_attr(list);
+	decl_attr = decl->data;
+
+	handle = att_get_u16(decl_attr->value + 1);
+	sprintf(key, "0x%04X", handle);
+
+	ccc = att_get_u16(value);
+	write_ccc(device, key, ccc);
+
+	DBG("Write CCC %p handle: 0x%04X value: 0x%04x", attr, handle, ccc);
+
+	if (result)
+		result(0, user_data);
 }
 
 void btd_gatt_read_attribute(struct btd_attribute *attr,
