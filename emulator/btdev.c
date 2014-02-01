@@ -889,7 +889,9 @@ static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 		cr.link_type = 0x01;
 
 		send_event(remote, BT_HCI_EVT_CONN_REQUEST, &cr, sizeof(cr));
+		printf("XXX: CREATE_CONN: scan_enable & 0x02\n");
 	} else {
+		printf("XXX: CREATE_CONN: !remote || !(scan_enable & 0x02)\n");
 		conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
 	}
 }
@@ -2617,6 +2619,9 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	callback.opcode = le16_to_cpu(hdr->opcode);
 	callback.data = data + sizeof(*hdr);
 	callback.len = hdr->plen;
+
+	if (callback.opcode == BT_HCI_CMD_ACCEPT_CONN_REQUEST)
+		printf("XXX %s ACCEPT_CONN_REQUEST\n", __func__);
 
 	if (btdev->command_handler)
 		btdev->command_handler(callback.opcode,

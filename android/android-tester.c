@@ -546,10 +546,10 @@ static void emu_connectable_complete(uint16_t opcode, uint8_t status,
 
 	tester_print("Emulated remote set connectable status 0x%02x", status);
 
-	if (status)
-		tester_setup_failed();
-	else
-		tester_setup_complete();
+//	if (status)
+//		tester_setup_failed();
+//	else
+//		tester_setup_complete();
 }
 
 static void setup_powered_emulated_remote(void)
@@ -912,6 +912,21 @@ static void remote_device_properties_cb(bt_status_t status,
 		test->expected_hal_cb.remote_device_properties_cb(status,
 					bd_addr, num_properties, properties);
 	}
+}
+
+static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
+								uint32_t cod)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	bt_pin_code_t pin = { .pin = { 0x30, 0x30, 0x30, 0x30 } };
+	int err;
+
+	bthost_set_pin_code(bthost, pin.pin, 4);
+
+	err = data->if_bluetooth->pin_reply(remote_bd_addr, 1, 4, &pin);
+	if (err != BT_STATUS_SUCCESS)
+		tester_setup_failed();
 }
 
 static bt_bdaddr_t enable_done_bdaddr_val = { {0x00} };
@@ -1942,7 +1957,7 @@ static bt_callbacks_t bt_callbacks = {
 	.remote_device_properties_cb = remote_device_properties_cb,
 	.device_found_cb = device_found_cb,
 	.discovery_state_changed_cb = discovery_state_changed_cb,
-	.pin_request_cb = NULL,
+	.pin_request_cb = pin_request_cb,
 	.ssp_request_cb = NULL,
 	.bond_state_changed_cb = NULL,
 	.acl_state_changed_cb = NULL,
@@ -3176,6 +3191,10 @@ static bool setup_hidhost(const void *test_data)
 		return false;
 	}
 
+	status = data->if_bluetooth->enable();
+	if (status != BT_STATUS_SUCCESS)
+		return false;
+
 	hid = data->if_bluetooth->get_profile_interface(BT_PROFILE_HIDHOST_ID);
 	if (!hid)
 		return false;
@@ -3406,15 +3425,24 @@ static void hid_sdp_search_cb(uint16_t handle, uint16_t cid, void *user_data)
 	bthost_add_cid_hook(bthost, handle, cid, hid_sdp_cid_hook_cb, NULL);
 }
 
+static void hid_connect(void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
+	bt_status_t bt_status;
+	bt_bdaddr_t bdaddr;
+
+	data->cb_count = 0;
+	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
+	bt_status = data->if_hid->connect(&bdaddr);
+	if (bt_status != BT_STATUS_SUCCESS)
+		tester_setup_failed();
+}
+
 static void emu_powered_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
 {
-	struct test_data *data = tester_get_data();
-	const uint8_t *hid_addr = hciemu_get_client_bdaddr(data->hciemu);
-	bt_bdaddr_t bdaddr;
-	bt_status_t bt_status;
-
 	switch (opcode) {
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
@@ -3428,12 +3456,8 @@ static void emu_powered_complete(uint16_t opcode, uint8_t status,
 		return;
 	}
 
-	data->cb_count = 0;
-	bdaddr2android((const bdaddr_t *) hid_addr, &bdaddr);
-	bt_status = data->if_hid->connect(&bdaddr);
-	if (bt_status != BT_STATUS_SUCCESS)
-		tester_setup_failed();
-
+	tester_wait(2, hid_connect, NULL);
+	//hid_connect(NULL);
 }
 
 static void setup_hidhost_connect(const void *test_data)
@@ -3621,7 +3645,7 @@ static void test_hidhost_get_report(const void *test_data)
 		user->test_data = data; \
 		tester_add_full(name, data, test_pre_setup, test_setup, \
 				test, test_teardown, test_post_teardown, \
-							3, user, g_free); \
+							10, user, g_free); \
 	} while (0)
 
 int main(int argc, char *argv[])

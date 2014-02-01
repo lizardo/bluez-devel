@@ -178,7 +178,6 @@ struct bthost {
 	bthost_send_func send_handler;
 	void *send_data;
 	struct cmd_queue cmd_q;
-	uint8_t ncmd;
 	struct btconn *conns;
 	bthost_cmd_complete_cb cmd_complete_cb;
 	void *cmd_complete_data;
@@ -194,6 +193,7 @@ struct bthost {
 	bool reject_user_confirm;
 	void *smp_data;
 	bool conn_init;
+	uint8_t ncmd;
 };
 
 struct bthost *bthost_create(void)
@@ -404,10 +404,12 @@ static void queue_command(struct bthost *bthost, const void *data,
 
 static void send_packet(struct bthost *bthost, const void *data, uint16_t len)
 {
+	const uint8_t *buf = data;
 	if (!bthost->send_handler)
 		return;
 
 	bthost->send_handler(data, len, bthost->send_data);
+	printf("AAA: %s(): ncmd=%d opcode=0x%02x%02x\n", __func__, bthost->ncmd, buf[2], buf[1]);
 }
 
 static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
@@ -439,6 +441,7 @@ static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
 								data, len);
 
 	send_packet(bthost, pkt_data, pkt_len);
+	printf("YYYYYYYYYYYYYY %s(): ncmd=%d\n", __func__, bthost->ncmd);
 
 	free(pkt_data);
 }
@@ -585,6 +588,9 @@ static void send_command(struct bthost *bthost, uint16_t opcode,
 	if (len > 0)
 		memcpy(pkt_data + 1 + sizeof(*hdr), data, len);
 
+	printf("XXX: bthost: %s (%p): opcode=%#x ncmd=%d\n", __func__, bthost, opcode, bthost->ncmd);
+	if (opcode == BT_HCI_CMD_ACCEPT_CONN_REQUEST)
+		printf("XXX: bthost: ACCEPT: send_handler=%p, ncmd=%d\n", bthost->send_handler, bthost->ncmd);
 	if (bthost->ncmd) {
 		send_packet(bthost, pkt_data, pkt_len);
 		bthost->ncmd--;
@@ -611,6 +617,7 @@ static void next_cmd(struct bthost *bthost)
 
 	send_packet(bthost, cmd->data, cmd->len);
 	bthost->ncmd--;
+	printf("XXXXXXXXXXXXXXX: %s (%p): ncmd=%d\n", __func__, bthost, bthost->ncmd);
 
 	if (next)
 		next->prev = NULL;
@@ -649,6 +656,7 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 	bthost->ncmd = ev->ncmd;
 
 	opcode = le16toh(ev->opcode);
+	printf("XXX: %s (%p): opcode=%#x ncmd=%d\n", __func__, bthost, opcode, bthost->ncmd);
 
 	switch (opcode) {
 	case BT_HCI_CMD_RESET:
@@ -685,7 +693,9 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		bthost->cmd_complete_cb(opcode, 0, param, len - sizeof(*ev),
 						bthost->cmd_complete_data);
 
+	printf("XXX: %s: ncmd=%d (before)\n", __func__, bthost->ncmd);
 	next_cmd(bthost);
+	printf("XXX: %s: ncmd=%d (after)\n", __func__, bthost->ncmd);
 }
 
 static void evt_cmd_status(struct bthost *bthost, const void *data,
@@ -700,12 +710,15 @@ static void evt_cmd_status(struct bthost *bthost, const void *data,
 	bthost->ncmd = ev->ncmd;
 
 	opcode = le16toh(ev->opcode);
+	printf("XXX: %s (%p): opcode=%#x ncmd=%d\n", __func__, bthost, opcode, bthost->ncmd);
 
 	if (ev->status && bthost->cmd_complete_cb)
 		bthost->cmd_complete_cb(opcode, ev->status, NULL, 0,
 						bthost->cmd_complete_data);
 
+	printf("XXX: %s: ncmd=%d (before)\n", __func__, bthost->ncmd);
 	next_cmd(bthost);
+	printf("XXX: %s: ncmd=%d (after)\n", __func__, bthost->ncmd);
 }
 
 static void evt_conn_request(struct bthost *bthost, const void *data,
@@ -720,6 +733,7 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 	memset(&cmd, 0, sizeof(cmd));
 	memcpy(cmd.bdaddr, ev->bdaddr, sizeof(ev->bdaddr));
 
+	printf("CCC: %s(): ncmd=%d\n", __func__, bthost->ncmd);
 	send_command(bthost, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd,
 								sizeof(cmd));
 }
@@ -1866,6 +1880,8 @@ void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 
 	if (!bthost)
 		return;
+
+	printf("CCC: %s(): ncmd=%d\n", __func__, bthost->ncmd);
 
 	if (len < 1)
 		return;
