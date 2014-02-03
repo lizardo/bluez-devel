@@ -27,6 +27,20 @@ void gatt_init(void);
 
 void gatt_cleanup(void);
 
+/*
+ * Callbacks from this type are called once the value from the attribute is
+ * ready to be read.
+ * @err:	error in errno format.
+ * @value:	pointer to value
+ * @len:	length of value
+ * @user_data:	user_data passed in btd_attr_read_t callback
+ */
+typedef void (*btd_attr_read_result_t) (int err, uint8_t *value, size_t len,
+							void *user_data);
+typedef void (*btd_attr_read_t) (struct btd_attribute *attr,
+						btd_attr_read_result_t result,
+						void *user_data);
+
 /* btd_gatt_add_service - Add a service declaration to local attribute database.
  * @uuid:	Service UUID.
  *
@@ -51,3 +65,12 @@ void btd_gatt_remove_service(struct btd_attribute *service);
  * NULL is returned.
  */
 struct btd_attribute *btd_gatt_add_char(bt_uuid_t *uuid, uint8_t properties);
+
+/* btd_gatt_read_attribute - Read the value of an attribute.
+ * @attr:	Attribute to be read.
+ * @result:	Callback function to be called with the result.
+ * @user_data:	Data to be passed to the result callback function.
+ */
+void btd_gatt_read_attribute(struct btd_attribute *attr,
+					btd_attr_read_result_t result,
+					void *user_data);

@@ -50,6 +50,7 @@ static const bt_uuid_t chr_uuid = { .type = BT_UUID16,
 struct btd_attribute {
 	uint16_t handle;
 	bt_uuid_t type;
+	btd_attr_read_t read_cb;
 	uint16_t value_len;
 	uint8_t value[0];
 };
@@ -82,6 +83,27 @@ static bool is_service(struct btd_attribute *attr)
 		return true;
 
 	return false;
+}
+
+void btd_gatt_read_attribute(struct btd_attribute *attr,
+					btd_attr_read_result_t result,
+					void *user_data)
+{
+	/*
+	 * When read_cb is available, it means that the attribute value
+	 * is dynamic, and its value must be read from the external
+	 * implementation. If "value_len" is set, the attribute value is
+	 * constant. Additional checking are performed by the attribute server
+	 * when the ATT Read request arrives based on the characteristic
+	 * properties. At this point, properties bitmask doesn't need to be
+	 * checked.
+	 */
+	if (attr->read_cb)
+		attr->read_cb(attr, result, user_data);
+	else if (attr->value_len > 0)
+		result(0, attr->value, attr->value_len, user_data);
+	else
+		result(EPERM, NULL, 0, user_data);
 }
 
 /*
