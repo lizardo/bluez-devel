@@ -166,6 +166,46 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	remove_service(eapp, path);
 }
 
+static void property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	GHashTableIter hash_iter;
+	gpointer hash_key, hash_value;
+	DBusMessageIter array;
+	const char *interface;
+	uint8_t *value;
+	int len;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	/* It doesn't make sense to change other types */
+	if (g_strcmp0(interface, CHARACTERISTIC_IFACE) != 0)
+		return;
+
+	if (!g_dbus_proxy_get_property(proxy, "Value", iter))
+		return;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &value, &len);
+
+	/*
+	 * Let the core to manage notifications and indications
+	 * for offline and connected devices.
+	 */
+	g_hash_table_iter_init (&hash_iter, proxy_hash);
+	while (g_hash_table_iter_next (&hash_iter, &hash_key, &hash_value)) {
+		if (proxy == hash_value) {
+			btd_gatt_write_attribute(hash_key, (uint8_t *) value,
+							len, NULL, NULL);
+			break;
+		}
+
+	}
+}
+
 static void external_app_watch_destroy(gpointer user_data)
 {
 	struct external_app *eapp = user_data;
@@ -214,7 +254,7 @@ static struct external_app *new_external_app(DBusConnection *conn,
 	eapp->client = client;
 
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
-								NULL, eapp);
+						property_changed, eapp);
 
 	return eapp;
 }
