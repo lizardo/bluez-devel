@@ -72,6 +72,23 @@ typedef void (*btd_attr_write_t) (struct btd_attribute *attr,
 					btd_attr_write_result_t result,
 					void *user_data);
 
+/*
+ * Callback called on each attribute from the local database when using
+ * btd_gatt_database_for_each().
+ * @attr:	attribute for the current iteration.
+ * @handle:	attribute handle.
+ * @type:	attribute type UUID.
+ * @read_cb:	read callback associated with this attribute.
+ * @write_cb:	write callback associated with this attribute.
+ * @value_len:	attribute value length (for static attributes).
+ * @value:	attribute value (for static attributes).
+ * @user_data:	user_data provided by btd_gatt_database_for_each() caller.
+ */
+typedef void (*btd_attr_func_t) (struct btd_attribute *attr, uint16_t handle,
+				bt_uuid_t *type, btd_attr_read_t read_cb,
+				btd_attr_write_t write_cb, uint16_t value_len,
+				uint8_t *value, void *user_data);
+
 /* btd_gatt_add_service - Add a service declaration to local attribute database.
  * @uuid:	Service UUID.
  *
@@ -102,3 +119,10 @@ struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
 						uint8_t properties,
 						btd_attr_read_t read_cb,
 						btd_attr_write_t write_cb);
+
+/* btd_gatt_database_for_each - Iterate over each attribute on the local
+ * attribute database.
+ * @func:	Callback called for each attribute on the database.
+ * @user_data:	Data to be passed to the callback function.
+ */
+void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data);
