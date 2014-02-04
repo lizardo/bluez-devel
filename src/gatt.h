@@ -119,3 +119,14 @@ void btd_gatt_write_attribute(struct btd_attribute *attr,
 				uint8_t *value, size_t len,
 				btd_attr_write_result_t result,
 				void *user_data);
+
+/* btd_gatt_database_for_each - Iterate over each attribute on the local
+ * attribute database.
+ * @func:	Callback called for each attribute on the database.
+ * @user_data:	Data to be passed to the callback function.
+ */
+typedef void (*btd_attr_func_t) (struct btd_attribute *attr, uint16_t handle,
+				bt_uuid_t *type, btd_attr_read_t read_cb,
+				btd_attr_write_t write_cb, uint16_t value_len,
+				uint8_t *value, void *user_data);
+void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data);

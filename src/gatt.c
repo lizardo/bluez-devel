@@ -430,6 +430,19 @@ static int local_database_add(uint16_t handle, struct btd_attribute *attr)
 	return 0;
 }
 
+void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data)
+{
+	GList *l;
+
+	for (l = local_attribute_db; l; l = l->next) {
+		struct btd_attribute *attr = l->data;
+
+		func(attr, attr->handle, &attr->type, attr->read_cb,
+				attr->write_cb, attr->value_len, attr->value,
+				user_data);
+	}
+}
+
 struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 {
 	struct btd_attribute *attr;
