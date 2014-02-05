@@ -54,6 +54,7 @@
 #include "attrib/att-database.h"
 #include "textfile.h"
 #include "storage.h"
+#include "src/gatt.h"
 
 #include "attrib-server.h"
 
@@ -69,6 +70,7 @@ struct gatt_server {
 	GSList *clients;
 	uint16_t name_handle;
 	uint16_t appearance_handle;
+	GSList *attr_callbacks;
 };
 
 struct gatt_channel {
@@ -87,6 +89,18 @@ struct group_elem {
 	uint16_t end;
 	uint8_t *data;
 	uint16_t len;
+};
+
+struct attr_cb_data {
+	/* Old GATT dabase API */
+	struct btd_adapter *adapter;
+	struct attribute *attr;
+	int err;
+
+	/* New GATT database API */
+	struct btd_attribute *new_attr;
+	btd_attr_read_t read_cb;
+	btd_attr_write_t write_cb;
 };
 
 static bt_uuid_t prim_uuid = {
@@ -135,6 +149,7 @@ static void channel_free(struct gatt_channel *channel)
 static void gatt_server_free(struct gatt_server *server)
 {
 	g_list_free_full(server->database, attrib_free);
+	g_slist_free_full(server->attr_callbacks, g_free);
 
 	if (server->l2cap_io != NULL) {
 		g_io_channel_shutdown(server->l2cap_io, FALSE, NULL);
@@ -1358,11 +1373,91 @@ static gboolean register_core_services(struct gatt_server *server)
 	return TRUE;
 }
 
+static void attr_read_result(int err, uint8_t *value, size_t len,
+								void *user_data)
+{
+	struct attr_cb_data *cb_data = user_data;
+
+	if (!err)
+		err = attrib_db_update(cb_data->adapter, cb_data->attr->handle,
+					NULL, value, len, &cb_data->attr);
+
+	cb_data->err = err;
+}
+
+static void attr_write_result(int err, void *user_data)
+{
+	struct attr_cb_data *cb_data = user_data;
+
+	cb_data->err = err;
+}
+
+static uint8_t attr_read_cb(struct attribute *a, struct btd_device *device,
+								void *user_data)
+{
+	struct attr_cb_data *cb_data = user_data;
+
+	cb_data->adapter = device_get_adapter(device);
+	cb_data->attr = a;
+
+	/* NOTE: This mechanism will not work for external services, because
+	 * old attribute API requires a synchronous callback */
+	cb_data->read_cb(cb_data->new_attr, attr_read_result, user_data);
+
+	/* NOTE: This only works for "synchronous" callbacks, whose result
+	 * callback is called on the same mainloop iteration */
+
+	/* FIXME: map errno codes to ATT error codes */
+	return cb_data->err ? ATT_ECODE_UNLIKELY : 0;
+}
+
+static uint8_t attr_write_cb(struct attribute *a, struct btd_device *device,
+								void *user_data)
+{
+	struct attr_cb_data *cb_data = user_data;
+
+	/* NOTE: This mechanism will not work for external services, because
+	 * old attribute API requires a synchronous callback */
+	cb_data->write_cb(cb_data->new_attr, a->data, a->len, attr_write_result,
+								user_data);
+
+	/* FIXME: map errno codes to ATT error codes */
+	return cb_data->err ? ATT_ECODE_UNLIKELY : 0;
+}
+
+static void attrib_db_import(struct btd_attribute *attr, uint16_t handle,
+				bt_uuid_t *uuid, btd_attr_read_t read_cb,
+				btd_attr_write_t write_cb, uint16_t value_len,
+				uint8_t *value, void *user_data)
+{
+	struct gatt_server *server = user_data;
+	struct attribute *a;
+	struct attr_cb_data *cb_data;
+
+	cb_data = g_new0(struct attr_cb_data, 1);
+	cb_data->err = EINVAL;
+	cb_data->new_attr = attr;
+	cb_data->read_cb = read_cb;
+	cb_data->write_cb = write_cb;
+	server->attr_callbacks = g_slist_append(server->attr_callbacks,
+								cb_data);
+
+	a = attrib_db_add_new(server, handle, uuid, ATT_NONE, ATT_NOT_PERMITTED,
+							value, value_len);
+
+	a->cb_user_data = cb_data;
+	if (read_cb)
+		a->read_cb = attr_read_cb;
+	if (write_cb)
+		a->write_cb = attr_write_cb;
+}
+
 int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 {
 	struct gatt_server *server;
 	GError *gerr = NULL;
 	const bdaddr_t *addr;
+	GList *l;
 
 	DBG("Start GATT server in hci%d", btd_adapter_get_index(adapter));
 
@@ -1384,6 +1479,38 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 		gatt_server_free(server);
 		return -1;
 	}
+
+	DBG("Importing attributes from new GATT database");
+
+	btd_gatt_database_for_each(attrib_db_import, server);
+	/* Fixup attribute permissions based on type and characteristic
+	 * properties */
+	for (l = server->database; l; l = l->next) {
+		struct attribute *a = l->data;
+		bt_uuid_t chr_uuid;
+
+		bt_uuid16_create(&chr_uuid, GATT_CHARAC_UUID);
+
+		if (!bt_uuid_cmp(&a->uuid, &ccc_uuid))
+			a->write_req = ATT_AUTHENTICATION;
+		else if (!bt_uuid_cmp(&a->uuid, &chr_uuid)) {
+			uint8_t props = a->data[0];
+			uint16_t value_handle = get_le16(a->data + 1);
+
+			l = l->next;
+			a = l->data;
+			g_assert(a->handle == value_handle);
+
+			/* Fixup characteristic value attribute permissions */
+			if (props & (GATT_CHR_PROP_WRITE_WITHOUT_RESP |
+							GATT_CHR_PROP_WRITE))
+				a->write_req = ATT_AUTHENTICATION;
+			if (!(props & GATT_CHR_PROP_READ))
+				a->read_req = ATT_NOT_PERMITTED;
+		}
+	}
+
+	DBG("Finished importing attributes from new GATT database");
 
 	if (!register_core_services(server)) {
 		gatt_server_free(server);
