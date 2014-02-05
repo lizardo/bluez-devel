@@ -69,6 +69,7 @@
 #include "attrib/gatt.h"
 #include "attrib-server.h"
 #include "eir.h"
+#include "src/gatt.h"
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 
@@ -4114,6 +4115,93 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
+static sdp_record_t *create_sdp_gatt(uuid_t *uuid, const char *name,
+						uint16_t start, uint16_t end)
+{
+	sdp_list_t *svclass_id, *apseq, *proto[2], *root, *aproto;
+	uuid_t root_uuid, proto_uuid, l2cap, gap_uuid;
+	sdp_record_t *record;
+	sdp_data_t *psm, *sh, *eh;
+	uint16_t lp = ATT_PSM;
+
+	record = sdp_record_alloc();
+	if (!record)
+		return NULL;
+
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
+	root = sdp_list_append(NULL, &root_uuid);
+	sdp_set_browse_groups(record, root);
+	sdp_list_free(root, NULL);
+
+	svclass_id = sdp_list_append(NULL, uuid);
+	sdp_set_service_classes(record, svclass_id);
+	sdp_list_free(svclass_id, NULL);
+
+	sdp_uuid16_create(&l2cap, L2CAP_UUID);
+	proto[0] = sdp_list_append(NULL, &l2cap);
+	psm = sdp_data_alloc(SDP_UINT16, &lp);
+	proto[0] = sdp_list_append(proto[0], psm);
+	apseq = sdp_list_append(NULL, proto[0]);
+
+	sdp_uuid16_create(&proto_uuid, ATT_UUID);
+	proto[1] = sdp_list_append(NULL, &proto_uuid);
+	sh = sdp_data_alloc(SDP_UINT16, &start);
+	proto[1] = sdp_list_append(proto[1], sh);
+	eh = sdp_data_alloc(SDP_UINT16, &end);
+	proto[1] = sdp_list_append(proto[1], eh);
+	apseq = sdp_list_append(apseq, proto[1]);
+
+	aproto = sdp_list_append(NULL, apseq);
+	sdp_set_access_protos(record, aproto);
+
+	sdp_data_free(psm);
+	sdp_data_free(sh);
+	sdp_data_free(eh);
+	sdp_list_free(proto[0], NULL);
+	sdp_list_free(proto[1], NULL);
+	sdp_list_free(apseq, NULL);
+	sdp_list_free(aproto, NULL);
+
+	sdp_set_info_attr(record, name, "BlueZ", NULL);
+
+	sdp_uuid16_create(&gap_uuid, GENERIC_ACCESS_PROFILE_ID);
+	if (!sdp_uuid_cmp(uuid, &gap_uuid)) {
+		sdp_set_url_attr(record, "http://www.bluez.org/",
+						"http://www.bluez.org/",
+						"http://www.bluez.org/");
+	}
+
+	return record;
+}
+
+static bool publish_sdp_gatt(struct btd_adapter *adapter, uint16_t uuid16,
+							const char *name)
+{
+	uint16_t start, end;
+	sdp_record_t *record;
+	uuid_t sdp_uuid;
+	bt_uuid_t uuid;
+
+	DBG("Service Name: %s", name);
+
+	bt_uuid16_create(&uuid, uuid16);
+	btd_gatt_get_svc_range(&uuid, &start, &end);
+	if (!start || !end)
+		return false;
+
+	sdp_uuid16_create(&sdp_uuid, uuid16);
+	record = create_sdp_gatt(&sdp_uuid, name, start, end);
+	if (!record)
+		return false;
+
+	if (adapter_service_add(adapter, record) < 0) {
+		sdp_record_free(record);
+		return false;
+	}
+
+	return true;
+}
+
 static struct btd_adapter *btd_adapter_new(uint16_t index)
 {
 	struct btd_adapter *adapter;
@@ -4152,6 +4240,14 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 	DBG("Pairable timeout: %u seconds", adapter->pairable_timeout);
 
 	adapter->auths = g_queue_new();
+
+	if (!publish_sdp_gatt(adapter, GENERIC_ACCESS_PROFILE_ID,
+						"Generic Access Profile"))
+		error("Could not register SDP record for GAP");
+
+	if (!publish_sdp_gatt(adapter, GENERIC_ATTRIB_PROFILE_ID,
+						"Generic Attribute Profile"))
+		error("Could not register SDP record for GATT");
 
 	return btd_adapter_ref(adapter);
 }

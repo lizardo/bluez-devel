@@ -126,6 +126,66 @@ void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data)
 	}
 }
 
+static void get_uuid(uint8_t type, const void *val, bt_uuid_t *uuid)
+{
+	if (type == BT_UUID16)
+		bt_uuid16_create(uuid, get_le16(val));
+	else {
+		uint128_t u128;
+
+		/* Convert from 128-bit LE to BE */
+		bswap_128(val, &u128);
+		bt_uuid128_create(uuid, u128);
+	}
+}
+
+static int cmp_uuid(const void *a, const void *b)
+{
+	const struct btd_attribute *attr = a;
+	const bt_uuid_t *svc_uuid = b;
+	bt_uuid_t uuid;
+
+	if (!is_service(attr))
+		return -1;
+
+	if (attr->value_len == 2)
+		get_uuid(BT_UUID16, attr->value, &uuid);
+	else if (attr->value_len == 16)
+		get_uuid(BT_UUID128, attr->value, &uuid);
+	else
+		return -1;
+
+	return bt_uuid_cmp(svc_uuid, &uuid);
+}
+
+void btd_gatt_get_svc_range(bt_uuid_t *uuid, uint16_t *start, uint16_t *end)
+{
+	struct btd_attribute *attr;
+	GList *l;
+
+	l = g_list_find_custom(local_attribute_db, uuid, cmp_uuid);
+	if (!l) {
+		*start = 0;
+		*end = 0;
+		return;
+	}
+
+	attr = l->data;
+	*start = attr->handle;
+	*end = attr->handle;
+	l = l->next;
+
+	while (l) {
+		attr = l->data;
+
+		if (is_service(attr))
+			break;
+
+		*end = attr->handle;
+		l = l->next;
+	}
+}
+
 struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 {
 	struct btd_attribute *attr;

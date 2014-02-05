@@ -126,3 +126,9 @@ struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
  * @user_data:	Data to be passed to the callback function.
  */
 void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data);
+
+/* btd_gatt_get_svc_range - Get start and end attribute handles for the first
+ * service matching given UUID.
+ * @uuid:	Service UUID.
+ */
+void btd_gatt_get_svc_range(bt_uuid_t *uuid, uint16_t *start, uint16_t *end);
