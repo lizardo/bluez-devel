@@ -53,6 +53,7 @@
 #include "attrib/att-database.h"
 #include "textfile.h"
 #include "storage.h"
+#include "src/gatt.h"
 
 #include "attrib-server.h"
 
@@ -1312,11 +1313,90 @@ static gboolean register_core_services(struct gatt_server *server)
 	return TRUE;
 }
 
+struct attr_cb_data {
+	struct btd_device *device;
+	struct attribute *attr;
+	int err;
+};
+
+static void attr_read_result(int err, uint8_t *value, size_t len,
+								void *user_data)
+{
+	struct attr_cb_data *data = user_data;
+	struct btd_adapter *adapter = device_get_adapter(data->device);
+
+	if (!err)
+		err = attrib_db_update(adapter, data->attr->handle, NULL, value,
+							len, &data->attr);
+
+	data->err = err;
+}
+
+static void attr_write_result(int err, void *user_data)
+{
+	struct attr_cb_data *data = user_data;
+
+	data->err = err;
+}
+
+static uint8_t attr_read_cb(struct attribute *a, struct btd_device *device,
+								void *user_data)
+{
+	struct btd_attribute *attr = user_data;
+	struct attr_cb_data data;
+
+	data.device = device;
+	data.attr = a;
+
+	btd_gatt_read_attribute(attr, attr_read_result, &data);
+
+	/* NOTE: This only works for "synchronous" callbacks, whose result
+	 * callback is called on the same mainloop iteration */
+
+	/* FIXME: map errno codes to ATT error codes */
+	return data.err ? ATT_ECODE_UNLIKELY : 0;
+}
+
+static uint8_t attr_write_cb(struct attribute *a, struct btd_device *device,
+								void *user_data)
+{
+	struct btd_attribute *attr = user_data;
+	struct attr_cb_data data;
+
+	btd_gatt_write_attribute(attr, a->data, a->len, attr_write_result,
+									&data);
+
+	/* NOTE: This only works for "synchronous" callbacks, whose result
+	 * callback is called on the same mainloop iteration */
+
+	/* FIXME: map errno codes to ATT error codes */
+	return data.err ? ATT_ECODE_UNLIKELY : 0;
+}
+
+static void attrib_db_import(struct btd_attribute *attr, uint16_t handle,
+				bt_uuid_t *uuid, btd_attr_read_t read_cb,
+				btd_attr_write_t write_cb, uint16_t value_len,
+				uint8_t *value, void *user_data)
+{
+	struct gatt_server *server = user_data;
+	struct attribute *a;
+
+	a = attrib_db_add_new(server, handle, uuid, ATT_NONE, ATT_NOT_PERMITTED,
+							value, value_len);
+
+	a->cb_user_data = attr;
+	if (read_cb)
+		a->read_cb = attr_read_cb;
+	if (write_cb)
+		a->write_cb = attr_write_cb;
+}
+
 int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 {
 	struct gatt_server *server;
 	GError *gerr = NULL;
 	const bdaddr_t *addr;
+	GList *l;
 
 	DBG("Start GATT server in hci%d", btd_adapter_get_index(adapter));
 
@@ -1338,6 +1418,38 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 		gatt_server_free(server);
 		return -1;
 	}
+
+	DBG("Importing attributes from new GATT database");
+
+	btd_gatt_database_for_each(attrib_db_import, server);
+	/* Fixup attribute permissions based on type and characteristic
+	 * properties */
+	for (l = server->database; l; l = l->next) {
+		struct attribute *a = l->data;
+		bt_uuid_t chr_uuid;
+
+		bt_uuid16_create(&chr_uuid, GATT_CHARAC_UUID);
+
+		if (!bt_uuid_cmp(&a->uuid, &ccc_uuid))
+			a->write_req = ATT_AUTHENTICATION;
+		else if (!bt_uuid_cmp(&a->uuid, &chr_uuid)) {
+			uint8_t props = a->data[0];
+			uint16_t value_handle = att_get_u16(a->data + 1);
+
+			l = l->next;
+			a = l->data;
+			g_assert(a->handle == value_handle);
+
+			/* Fixup characteristic value attribute permissions */
+			if (props & (GATT_CHR_PROP_WRITE_WITHOUT_RESP |
+							GATT_CHR_PROP_WRITE))
+				a->write_req = ATT_AUTHENTICATION;
+			if (!(props & GATT_CHR_PROP_READ))
+				a->read_req = ATT_NOT_PERMITTED;
+		}
+	}
+
+	DBG("Finished importing attributes from new GATT database");
 
 	if (!register_core_services(server)) {
 		gatt_server_free(server);
