@@ -130,3 +130,9 @@ typedef void (*btd_attr_func_t) (struct btd_attribute *attr, uint16_t handle,
 				btd_attr_write_t write_cb, uint16_t value_len,
 				uint8_t *value, void *user_data);
 void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data);
+
+/* btd_gatt_get_svc_range - Get start and end attribute handles for the first
+ * service matching given UUID.
+ * @uuid:	Service UUID.
+ */
+void btd_gatt_get_svc_range(bt_uuid_t *uuid, uint16_t *start, uint16_t *end);

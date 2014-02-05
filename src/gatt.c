@@ -88,7 +88,7 @@ static void write_pdu(int sk, const uint8_t *pdu, size_t plen)
 						strerror(errno), errno);
 }
 
-static bool is_service(struct btd_attribute *attr)
+static bool is_service(const struct btd_attribute *attr)
 {
 	if (attr->type.type != BT_UUID16)
 		return false;
@@ -440,6 +440,53 @@ void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data)
 		func(attr, attr->handle, &attr->type, attr->read_cb,
 				attr->write_cb, attr->value_len, attr->value,
 				user_data);
+	}
+}
+
+static int cmp_uuid(const void *a, const void *b)
+{
+	const struct btd_attribute *attr = a;
+	const bt_uuid_t *svc_uuid = b;
+	bt_uuid_t uuid;
+
+	if (!is_service(attr))
+		return -1;
+
+	if (attr->value_len == 2)
+		uuid = att_get_uuid16(attr->value);
+	else if (attr->value_len == 16)
+		uuid = att_get_uuid128(attr->value);
+	else
+		return -1;
+
+	return bt_uuid_cmp(svc_uuid, &uuid);
+}
+
+void btd_gatt_get_svc_range(bt_uuid_t *uuid, uint16_t *start, uint16_t *end)
+{
+	struct btd_attribute *attr;
+	GList *l;
+
+	l = g_list_find_custom(local_attribute_db, uuid, cmp_uuid);
+	if (!l) {
+		*start = 0;
+		*end = 0;
+		return;
+	}
+
+	attr = l->data;
+	*start = attr->handle;
+	*end = attr->handle;
+	l = l->next;
+
+	while (l) {
+		attr = l->data;
+
+		if (is_service(attr))
+			break;
+
+		*end = attr->handle;
+		l = l->next;
 	}
 }
 
