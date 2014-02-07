@@ -32,8 +32,6 @@ int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 					bt_uuid_t *uuid, const uint8_t *value,
 					size_t len, struct attribute **attr);
 int attrib_db_del(struct btd_adapter *adapter, uint16_t handle);
-int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
-					const uint8_t *value, size_t len);
 uint32_t attrib_create_sdp(struct btd_adapter *adapter, uint16_t handle,
 							const char *name);
 void attrib_free_sdp(struct btd_adapter *adapter, uint32_t sdp_handle);

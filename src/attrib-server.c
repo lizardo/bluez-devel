@@ -63,12 +63,8 @@ struct gatt_server {
 	struct btd_adapter *adapter;
 	GIOChannel *l2cap_io;
 	GIOChannel *le_io;
-	uint32_t gatt_sdp_handle;
-	uint32_t gap_sdp_handle;
 	GList *database;
 	GSList *clients;
-	uint16_t name_handle;
-	uint16_t appearance_handle;
 };
 
 struct gatt_channel {
@@ -140,13 +136,6 @@ static void gatt_server_free(struct gatt_server *server)
 	}
 
 	g_slist_free_full(server->clients, (GDestroyNotify) channel_free);
-
-	if (server->gatt_sdp_handle > 0)
-		adapter_service_remove(server->adapter,
-					server->gatt_sdp_handle);
-
-	if (server->gap_sdp_handle > 0)
-		adapter_service_remove(server->adapter, server->gap_sdp_handle);
 
 	if (server->adapter != NULL)
 		btd_adapter_unref(server->adapter);
@@ -1250,69 +1239,6 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 	g_attrib_unref(attrib);
 }
 
-static gboolean register_core_services(struct gatt_server *server)
-{
-	uint8_t atval[256];
-	bt_uuid_t uuid;
-	uint16_t appearance = 0x0000;
-
-	/* GAP service: primary service definition */
-	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ACCESS_PROFILE_ID, &atval[0]);
-	attrib_db_add_new(server, 0x0001, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
-								atval, 2);
-
-	/* GAP service: device name characteristic */
-	server->name_handle = 0x0006;
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = GATT_CHR_PROP_READ;
-	att_put_u16(server->name_handle, &atval[1]);
-	att_put_u16(GATT_CHARAC_DEVICE_NAME, &atval[3]);
-	attrib_db_add_new(server, 0x0004, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
-								atval, 5);
-
-	/* GAP service: device name attribute */
-	bt_uuid16_create(&uuid, GATT_CHARAC_DEVICE_NAME);
-	attrib_db_add_new(server, server->name_handle, &uuid, ATT_NONE,
-						ATT_NOT_PERMITTED, NULL, 0);
-
-	/* GAP service: device appearance characteristic */
-	server->appearance_handle = 0x0008;
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = GATT_CHR_PROP_READ;
-	att_put_u16(server->appearance_handle, &atval[1]);
-	att_put_u16(GATT_CHARAC_APPEARANCE, &atval[3]);
-	attrib_db_add_new(server, 0x0007, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
-								atval, 5);
-
-	/* GAP service: device appearance attribute */
-	bt_uuid16_create(&uuid, GATT_CHARAC_APPEARANCE);
-	att_put_u16(appearance, &atval[0]);
-	attrib_db_add_new(server, server->appearance_handle, &uuid, ATT_NONE,
-						ATT_NOT_PERMITTED, atval, 2);
-	server->gap_sdp_handle = attrib_create_sdp_new(server, 0x0001,
-						"Generic Access Profile");
-	if (server->gap_sdp_handle == 0) {
-		error("Failed to register GAP service record");
-		return FALSE;
-	}
-
-	/* GATT service: primary service definition */
-	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(GENERIC_ATTRIB_PROFILE_ID, &atval[0]);
-	attrib_db_add_new(server, 0x0010, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
-								atval, 2);
-
-	server->gatt_sdp_handle = attrib_create_sdp_new(server, 0x0010,
-						"Generic Attribute Profile");
-	if (server->gatt_sdp_handle == 0) {
-		error("Failed to register GATT service record");
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 struct attr_cb_data {
 	struct btd_device *device;
 	struct attribute *attr;
@@ -1450,11 +1376,6 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	}
 
 	DBG("Finished importing attributes from new GATT database");
-
-	if (!register_core_services(server)) {
-		gatt_server_free(server);
-		return -1;
-	}
 
 	/* LE socket */
 	server->le_io = bt_io_listen(connect_event, NULL,
@@ -1698,33 +1619,4 @@ int attrib_db_del(struct btd_adapter *adapter, uint16_t handle)
 	g_free(a);
 
 	return 0;
-}
-
-int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
-					const uint8_t *value, size_t len)
-{
-	struct gatt_server *server;
-	uint16_t handle;
-	GSList *l;
-
-	l = g_slist_find_custom(servers, adapter, adapter_cmp);
-	if (l == NULL)
-		return -ENOENT;
-
-	server = l->data;
-
-	/* FIXME: Missing Privacy and Reconnection Address */
-
-	switch (uuid) {
-	case GATT_CHARAC_DEVICE_NAME:
-		handle = server->name_handle;
-		break;
-	case GATT_CHARAC_APPEARANCE:
-		handle = server->appearance_handle;
-		break;
-	default:
-		return -ENOSYS;
-	}
-
-	return attrib_db_update(adapter, handle, NULL, value, len, NULL);
 }
