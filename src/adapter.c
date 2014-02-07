@@ -264,7 +264,6 @@ static void dev_class_changed_callback(uint16_t index, uint16_t length,
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
-	uint8_t appearance[3];
 	uint32_t dev_class;
 
 	if (length < sizeof(*rp)) {
@@ -283,12 +282,6 @@ static void dev_class_changed_callback(uint16_t index, uint16_t length,
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Class");
-
-	appearance[0] = rp->val[0];
-	appearance[1] = rp->val[1] & 0x1f;	/* removes service class */
-	appearance[2] = rp->val[2];
-
-	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, appearance, 2);
 }
 
 static void set_dev_class_complete(uint8_t status, uint16_t length,
@@ -638,10 +631,6 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Alias");
-
-	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
-				(const uint8_t *) adapter->current_alias,
-					strlen(adapter->current_alias));
 }
 
 static void set_local_name_complete(uint8_t status, uint16_t length,
