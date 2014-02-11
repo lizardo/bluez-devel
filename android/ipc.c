@@ -336,12 +336,16 @@ void ipc_send_notif(uint8_t service_id, uint8_t opcode,  uint16_t len,
 void ipc_register(uint8_t service, const struct ipc_handler *handlers,
 								uint8_t size)
 {
+	g_assert(service <= HAL_SERVICE_ID_MAX);
+
 	services[service].handler = handlers;
 	services[service].size = size;
 }
 
 void ipc_unregister(uint8_t service)
 {
+	g_assert(service <= HAL_SERVICE_ID_MAX);
+
 	services[service].handler = NULL;
 	services[service].size = 0;
 }
