@@ -170,16 +170,20 @@ static void register_current_time_service(void)
 	}
 }
 
-static uint8_t time_update_control(struct attribute *a,
-						struct btd_device *device,
-						gpointer user_data)
+static void time_update_control(struct btd_device *device,
+				struct btd_attribute *attr,
+				const uint8_t *value, size_t len,
+				btd_attr_write_result_t result, void *user_data)
 {
-	DBG("handle 0x%04x", a->handle);
+	int err = 0;
 
-	if (a->len != 1)
-		DBG("Invalid control point value size: %zu", a->len);
+	if (len != 1) {
+		DBG("Invalid control point value size: %zu", len);
+		err = EINVAL;
+		goto done;
+	}
 
-	switch (a->data[0]) {
+	switch (value[0]) {
 	case GET_REFERENCE_UPDATE:
 		DBG("Get Reference Update");
 		break;
@@ -187,50 +191,52 @@ static uint8_t time_update_control(struct attribute *a,
 		DBG("Cancel Reference Update");
 		break;
 	default:
-		DBG("Unknown command: 0x%02x", a->data[0]);
+		DBG("Unknown command: 0x%02x", value[0]);
+		err = EINVAL;
 	}
 
-	return 0;
+done:
+	result(err, user_data);
 }
 
-static uint8_t time_update_status(struct attribute *a,
-						struct btd_device *device,
-						gpointer user_data)
+static void time_update_status(struct btd_device *device,
+				struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
 	uint8_t value[2];
-
-	DBG("handle 0x%04x", a->handle);
 
 	value[0] = UPDATE_STATE_IDLE;
 	value[1] = UPDATE_RESULT_SUCCESSFUL;
-	attrib_db_update(adapter, a->handle, NULL, value, sizeof(value), NULL);
 
-	return 0;
+	result(0, value, sizeof(value), user_data);
 }
 
-static gboolean register_ref_time_update_service(struct btd_adapter *adapter)
+static void register_ref_time_update_service(void)
 {
+	struct btd_attribute *attr;
 	bt_uuid_t uuid;
 
-	bt_uuid16_create(&uuid, REF_TIME_UPDATE_SVC_UUID);
-
 	/* Reference Time Update service */
-	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
-				/* Time Update control point */
-				GATT_OPT_CHR_UUID16, TIME_UPDATE_CTRL_CHR_UUID,
-				GATT_OPT_CHR_PROPS,
-					GATT_CHR_PROP_WRITE_WITHOUT_RESP,
-				GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,
-						time_update_control, adapter,
+	bt_uuid16_create(&uuid, REF_TIME_UPDATE_SVC_UUID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return;
 
-				/* Time Update status */
-				GATT_OPT_CHR_UUID16, TIME_UPDATE_STAT_CHR_UUID,
-				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ,
-				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
-						time_update_status, adapter,
+	/* Time Update control point */
+	bt_uuid16_create(&uuid, TIME_UPDATE_CTRL_CHR_UUID);
+	if (!btd_gatt_add_char(&uuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP,
+						NULL, time_update_control)) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
 
-				GATT_OPT_INVALID);
+	/* Time Update status */
+	bt_uuid16_create(&uuid, TIME_UPDATE_STAT_CHR_UUID);
+	if (!btd_gatt_add_char(&uuid, GATT_CHR_PROP_READ, time_update_status,
+									NULL)) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
 }
 
 static int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
@@ -238,11 +244,6 @@ static int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
 	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
-
-	if (!register_ref_time_update_service(adapter)) {
-		error("Reference Time Update Service could not be registered");
-		return -EIO;
-	}
 
 	return 0;
 }
@@ -264,6 +265,7 @@ struct btd_profile time_profile = {
 static int time_init(void)
 {
 	register_current_time_service();
+	register_ref_time_update_service();
 
 	return btd_profile_register(&time_profile);
 }
