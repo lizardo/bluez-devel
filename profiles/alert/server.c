@@ -48,6 +48,7 @@
 #include "src/error.h"
 #include "src/textfile.h"
 #include "src/attio.h"
+#include "src/gatt.h"
 
 #define PHONE_ALERT_STATUS_SVC_UUID	0x180E
 #define ALERT_NOTIF_SVC_UUID		0x1811
@@ -132,6 +133,8 @@ static GSList *registered_alerts = NULL;
 static GSList *alert_adapters = NULL;
 static uint8_t ringer_setting = RINGER_NORMAL;
 static uint8_t alert_status = 0;
+static struct btd_attribute *alert_status_chr = NULL;
+static struct btd_attribute *ringer_setting_chr = NULL;
 
 static const char * const anp_categories[] = {
 	"simple",
@@ -385,7 +388,6 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	struct alert_adapter *al_adapter = nd->al_adapter;
 	size_t len;
 	uint8_t *pdu = g_attrib_get_buffer(attrib, &len);
-
 
 	switch (type) {
 	case NOTIFY_RINGER_SETTING:
@@ -735,18 +737,19 @@ static DBusMessage *unread_alert(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static uint8_t ringer_cp_write(struct attribute *a,
-						struct btd_device *device,
-						gpointer user_data)
+static void ringer_cp_write(struct btd_attribute *attr,
+				const uint8_t *value, size_t len,
+				btd_attr_write_result_t result, void *user_data)
 {
-	DBG("a = %p", a);
+	int err = 0;
 
-	if (a->len > 1) {
-		DBG("Invalid command size (%zu)", a->len);
-		return 0;
+	if (len != 1) {
+		DBG("Invalid command size (%zu)", len);
+		err = EINVAL;
+		goto done;
 	}
 
-	switch (a->data[0]) {
+	switch (value[0]) {
 	case RINGER_SILENT_MODE:
 		DBG("Silent Mode");
 		agent_ringer_set_ringer("disabled");
@@ -760,51 +763,68 @@ static uint8_t ringer_cp_write(struct attribute *a,
 		agent_ringer_set_ringer("enabled");
 		break;
 	default:
-		DBG("Invalid command (0x%02x)", a->data[0]);
+		DBG("Invalid command (0x%02x)", value[0]);
+		err = EINVAL;
 	}
 
-	return 0;
+done:
+	result(err, user_data);
 }
 
-static uint8_t alert_status_read(struct attribute *a,
-						struct btd_device *device,
-						gpointer user_data)
+static void alert_status_read(struct btd_attribute *attr,
+						btd_attr_read_result_t result,
+						void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
-
-	DBG("a = %p", a);
-
-	if (a->data == NULL || a->data[0] != alert_status)
-		attrib_db_update(adapter, a->handle, NULL, &alert_status,
-						sizeof(alert_status), NULL);
-
-	return 0;
+	result(0, &alert_status, sizeof(alert_status), user_data);
 }
 
-static uint8_t ringer_setting_read(struct attribute *a,
-						struct btd_device *device,
-						gpointer user_data)
+static void ringer_setting_read(struct btd_attribute *attr,
+						btd_attr_read_result_t result,
+						void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
-
-	DBG("a = %p", a);
-
-	if (a->data == NULL || a->data[0] != ringer_setting)
-		attrib_db_update(adapter, a->handle, NULL, &ringer_setting,
-						sizeof(ringer_setting), NULL);
-
-	return 0;
+	result(0, &ringer_setting, sizeof(ringer_setting), user_data);
 }
 
-static void register_phone_alert_service(struct alert_adapter *al_adapter)
+static void register_phone_alert_service(void)
 {
+	struct btd_attribute *attr;
 	bt_uuid_t uuid;
 
-	bt_uuid16_create(&uuid, PHONE_ALERT_STATUS_SVC_UUID);
-
 	/* Phone Alert Status Service */
+	bt_uuid16_create(&uuid, PHONE_ALERT_STATUS_SVC_UUID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return;
+
+	/* Alert Status characteristic */
+	bt_uuid16_create(&uuid, ALERT_STATUS_CHR_UUID);
+	alert_status_chr = btd_gatt_add_char(&uuid,
+				GATT_CHR_PROP_READ | GATT_CHR_PROP_NOTIFY,
+				alert_status_read, NULL);
+	if (!alert_status_chr) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
+
+	/* Ringer Control Point characteristic */
+	bt_uuid16_create(&uuid, RINGER_CP_CHR_UUID);
+	if (!btd_gatt_add_char(&uuid, GATT_CHR_PROP_WRITE_WITHOUT_RESP, NULL,
+							ringer_cp_write)) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
+
+	/* Ringer Setting characteristic */
+	bt_uuid16_create(&uuid, RINGER_SETTING_CHR_UUID);
+	ringer_setting_chr = btd_gatt_add_char(&uuid,
+				GATT_CHR_PROP_READ | GATT_CHR_PROP_NOTIFY,
+				ringer_setting_read, NULL);
+	if (!ringer_setting_chr) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
+#if 0
 	gatt_service_add(al_adapter->adapter, GATT_PRIM_SVC_UUID, &uuid,
-			/* Alert Status characteristic */
 			GATT_OPT_CHR_UUID16, ALERT_STATUS_CHR_UUID,
 			GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ |
 							GATT_CHR_PROP_NOTIFY,
@@ -830,6 +850,7 @@ static void register_phone_alert_service(struct alert_adapter *al_adapter)
 			GATT_OPT_CHR_VALUE_GET_HANDLE,
 			&al_adapter->hnd_value[NOTIFY_RINGER_SETTING],
 			GATT_OPT_INVALID);
+#endif
 }
 
 static uint8_t supp_new_alert_cat_read(struct attribute *a,
@@ -953,7 +974,6 @@ static int alert_server_probe(struct btd_profile *p,
 
 	alert_adapters = g_slist_append(alert_adapters, al_adapter);
 
-	register_phone_alert_service(al_adapter);
 	register_alert_notif_service(al_adapter);
 
 	return 0;
@@ -1006,6 +1026,8 @@ static int alert_server_init(void)
 							ALERT_INTERFACE);
 		return -EIO;
 	}
+
+	register_phone_alert_service();
 
 	return btd_profile_register(&alert_profile);
 }

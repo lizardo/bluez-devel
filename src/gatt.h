@@ -127,6 +127,16 @@ struct btd_attribute *btd_gatt_add_char(const bt_uuid_t *uuid,
  */
 void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data);
 
+/* btd_gatt_database_notify_update - Set callbacks for notifying callers when
+ * an attribute is added or removed from the database.
+ * @attr_added:		Callback called when attribute is added to the database.
+ * @attr_removed:	Callback called when attribute is removed from database.
+ * @user_data:		Data to be passed to the callback functions.
+ */
+void btd_gatt_database_notify_update(btd_attr_func_t attr_added,
+						btd_attr_func_t attr_removed,
+						void *user_data);
+
 /* btd_gatt_get_svc_range - Get start and end attribute handles for the first
  * service matching given UUID.
  * @uuid:	Service UUID.
