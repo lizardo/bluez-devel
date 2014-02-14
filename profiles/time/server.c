@@ -43,6 +43,7 @@
 #include "attrib/att-database.h"
 #include "src/shared/util.h"
 #include "src/attrib-server.h"
+#include "src/gatt.h"
 #include "attrib/gatt-service.h"
 #include "src/log.h"
 
@@ -107,27 +108,25 @@ static int encode_current_time(uint8_t value[10])
 	return 0;
 }
 
-static uint8_t current_time_read(struct attribute *a,
-				 struct btd_device *device, gpointer user_data)
+static void current_time_read(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
 	uint8_t value[10];
+	int err;
 
-	if (encode_current_time(value) < 0)
-		return ATT_ECODE_IO;
+	err = encode_current_time(value);
+	if (err < 0) {
+		result(-err, NULL, 0, user_data);
+		return;
+	}
 
-	attrib_db_update(adapter, a->handle, NULL, value, sizeof(value), NULL);
-
-	return 0;
+	result(0, value, sizeof(value), user_data);
 }
 
-static uint8_t local_time_info_read(struct attribute *a,
-				struct btd_device *device, gpointer user_data)
+static void local_time_info_read(struct btd_attribute *attr,
+				btd_attr_read_result_t result, void *user_data)
 {
-	struct btd_adapter *adapter = user_data;
 	uint8_t value[2];
-
-	DBG("a=%p", a);
 
 	tzset();
 
@@ -139,33 +138,35 @@ static uint8_t local_time_info_read(struct attribute *a,
 	 * is DST for the local time or not. The offset is unknown. */
 	value[1] = daylight ? 0xff : 0x00;
 
-	attrib_db_update(adapter, a->handle, NULL, value, sizeof(value), NULL);
-
-	return 0;
+	result(0, value, sizeof(value), user_data);
 }
 
-static gboolean register_current_time_service(struct btd_adapter *adapter)
+static void register_current_time_service(void)
 {
+	struct btd_attribute *attr;
 	bt_uuid_t uuid;
 
-	bt_uuid16_create(&uuid, CURRENT_TIME_SVC_UUID);
-
 	/* Current Time service */
-	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
-				/* CT Time characteristic */
-				GATT_OPT_CHR_UUID16, CT_TIME_CHR_UUID,
-				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ |
-							GATT_CHR_PROP_NOTIFY,
-				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
-						current_time_read, adapter,
+	bt_uuid16_create(&uuid, CURRENT_TIME_SVC_UUID);
+	attr = btd_gatt_add_service(&uuid);
+	if (!attr)
+		return;
 
-				/* Local Time Information characteristic */
-				GATT_OPT_CHR_UUID16, LOCAL_TIME_INFO_CHR_UUID,
-				GATT_OPT_CHR_PROPS, GATT_CHR_PROP_READ,
-				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
-						local_time_info_read, adapter,
+	/* CT Time characteristic */
+	bt_uuid16_create(&uuid, CT_TIME_CHR_UUID);
+	if (!btd_gatt_add_char(&uuid, GATT_CHR_PROP_READ | GATT_CHR_PROP_NOTIFY,
+						current_time_read, NULL)) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
 
-				GATT_OPT_INVALID);
+	/* Local Time Information characteristic */
+	bt_uuid16_create(&uuid, LOCAL_TIME_INFO_CHR_UUID);
+	if (!btd_gatt_add_char(&uuid, GATT_CHR_PROP_READ, local_time_info_read,
+									NULL)) {
+		btd_gatt_remove_service(attr);
+		return;
+	}
 }
 
 static uint8_t time_update_control(struct attribute *a,
@@ -237,11 +238,6 @@ static int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
 
 	DBG("path %s", path);
 
-	if (!register_current_time_service(adapter)) {
-		error("Current Time Service could not be registered");
-		return -EIO;
-	}
-
 	if (!register_ref_time_update_service(adapter)) {
 		error("Reference Time Update Service could not be registered");
 		return -EIO;
@@ -266,6 +262,8 @@ struct btd_profile time_profile = {
 
 static int time_init(void)
 {
+	register_current_time_service();
+
 	return btd_profile_register(&time_profile);
 }
 
