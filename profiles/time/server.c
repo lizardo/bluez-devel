@@ -29,22 +29,17 @@
 #include <glib.h>
 #include <time.h>
 #include <errno.h>
-#include <stdbool.h>
 
 #include "src/adapter.h"
 #include "src/device.h"
-#include "src/profile.h"
 #include "src/plugin.h"
 
 #include "lib/uuid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
-#include "attrib/att-database.h"
 #include "src/shared/util.h"
-#include "src/attrib-server.h"
 #include "src/gatt.h"
-#include "attrib/gatt-service.h"
 #include "src/log.h"
 
 #define CURRENT_TIME_SVC_UUID		0x1805
@@ -236,40 +231,16 @@ static void register_ref_time_update_service(void)
 	}
 }
 
-static int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
-{
-	const char *path = adapter_get_path(adapter);
-
-	DBG("path %s", path);
-
-	return 0;
-}
-
-static void time_server_exit(struct btd_profile *p,
-						struct btd_adapter *adapter)
-{
-	const char *path = adapter_get_path(adapter);
-
-	DBG("path %s", path);
-}
-
-struct btd_profile time_profile = {
-	.name		= "gatt-time-server",
-	.adapter_probe	= time_server_init,
-	.adapter_remove	= time_server_exit,
-};
-
 static int time_init(void)
 {
 	register_current_time_service();
 	register_ref_time_update_service();
 
-	return btd_profile_register(&time_profile);
+	return 0;
 }
 
 static void time_exit(void)
 {
-	btd_profile_unregister(&time_profile);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(time, VERSION,
