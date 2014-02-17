@@ -44,6 +44,8 @@
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 #include "src/shared/io.h"
+#include "src/shared/queue.h"
+#include "src/shared/util.h"
 
 #include "textfile.h"
 #include "gatt-dbus.h"
@@ -67,11 +69,25 @@ struct btd_attribute {
 
 struct procedure_data {
 	uint16_t handle;		/* Operation handle */
-	struct io *io;			/* Connection reference */
+	struct attio *attio;		/* Queue reference */
 	GList *match;			/* List of matching attributes */
 	size_t vlen;			/* Pattern: length of each value */
 	size_t olen;				/* Output PDU length */
 	uint8_t opdu[ATT_DEFAULT_LE_MTU];	/* Output PDU */
+};
+
+struct attio {
+	struct io *io;
+	struct queue *request_queue;	/* Outgoing requests */
+	struct queue *reply_queue;	/* Notification/Indication/Responses */
+	unsigned int next_request_id;
+	bool writer_active;
+};
+
+struct att_request {
+	unsigned int id;
+	uint8_t pdu[ATT_DEFAULT_LE_MTU];
+	size_t plen;
 };
 
 static struct io *server_io;
@@ -81,11 +97,60 @@ static uint16_t next_handle = 0x0001;
 static struct btd_attribute *gatt, *gap;
 static struct btd_attribute *service_changed;
 
-static void write_pdu(int sk, const uint8_t *pdu, size_t plen)
+static void write_watch_destroy(void *user_data)
 {
-	if (write(sk, pdu, plen) < 0)
-		error("Error sending ATT PDU (0x%02X): %s (%d)", pdu[0],
-						strerror(errno), errno);
+	struct attio *attio = user_data;
+
+	attio->writer_active = false;
+}
+
+static bool can_write_data(struct io *io, void *user_data)
+{
+	struct attio *attio = user_data;
+	int sk = io_get_fd(io);
+	struct att_request *request;
+
+	request = queue_pop_head(attio->request_queue);
+	if (!request)
+		return false;
+
+	if (write(sk, request->pdu, request->plen) < 0)
+		error("Error sending ATT PDU (0x%02X): %s (%d)",
+				request->pdu[0], strerror(errno), errno);
+
+	free(request);
+
+	return false;
+
+}
+
+static void wakeup_writer(struct attio *attio)
+{
+	if (attio->writer_active)
+		return;
+
+	io_set_write_handler(attio->io, can_write_data, attio,
+						write_watch_destroy);
+}
+
+static unsigned int pdu_send(struct attio *attio, const uint8_t *pdu,
+								size_t plen)
+{
+	struct att_request *request;
+
+	request = new0(struct att_request, 1);
+	request->id = attio->next_request_id++;
+	memcpy(request->pdu, pdu, plen);
+	request->plen = plen;
+
+	if (!queue_push_tail(attio->request_queue, request)) {
+		free(request);
+		return 0;
+	}
+
+	wakeup_writer(attio);
+
+	return request->id;
 }
 
 static bool is_service(const struct btd_attribute *attr)
@@ -367,8 +432,8 @@ void btd_gatt_write_attribute(struct btd_attribute *attr,
 	for (list = iolist; list; list = g_slist_next(list)) {
 		uint8_t opdu[ATT_DEFAULT_LE_MTU];
 		size_t olen;
-		struct io *io = list->data;
-		int sk = io_get_fd(io);
+		struct attio *attio = list->data;
+		int sk = io_get_fd(attio->io);
 		struct btd_device *device = sock_get_device(sk);
 		uint16_t ccc;
 
@@ -382,7 +447,7 @@ void btd_gatt_write_attribute(struct btd_attribute *attr,
 			olen = enc_notification(attr->handle, value, len,
 							opdu, sizeof(opdu));
 
-		write_pdu(sk, opdu, olen);
+		pdu_send(attio, opdu, olen);
 	}
 
 	if (result)
@@ -665,16 +730,17 @@ struct btd_attribute *btd_gatt_add_char_desc(bt_uuid_t *uuid,
 	return attr;
 }
 
-static void send_error(int sk, uint8_t opcode, uint16_t handle, uint8_t ecode)
+static void send_error(struct attio *attio, uint8_t opcode,
+					uint16_t handle, uint8_t ecode)
 {
 	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	size_t plen;
 
 	plen = enc_error_resp(opcode, handle, ecode, pdu, sizeof(pdu));
-	write_pdu(sk, pdu, plen);
+	pdu_send(attio, pdu, plen);
 }
 
-static void read_by_group_resp(int sk, uint16_t start,
+static void read_by_group_resp(struct attio *attio, uint16_t start,
 					uint16_t end, bt_uuid_t *pattern)
 {
 	uint8_t opdu[ATT_DEFAULT_LE_MTU];
@@ -757,7 +823,7 @@ static void read_by_group_resp(int sk, uint16_t start,
 	}
 
 	if (plen == 0) {
-		send_error(sk, ATT_OP_READ_BY_GROUP_REQ, start,
+		send_error(attio, ATT_OP_READ_BY_GROUP_REQ, start,
 						ATT_ECODE_ATTR_NOT_FOUND);
 		return;
 	}
@@ -765,22 +831,22 @@ static void read_by_group_resp(int sk, uint16_t start,
 	if (group_end)
 		att_put_u16(last->handle, group_end);
 
-	write_pdu(sk, opdu, plen);
+	pdu_send(attio, opdu, plen);
 }
 
-static void read_by_group(int sk, const uint8_t *ipdu, ssize_t ilen)
+static void read_by_group(struct attio *attio, const uint8_t *ipdu, ssize_t ilen)
 {
 	uint16_t decoded, start, end;
 	bt_uuid_t pattern;
 
 	decoded = dec_read_by_grp_req(ipdu, ilen, &start, &end, &pattern);
 	if (decoded == 0) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
 		return;
 	}
 
 	if (start > end || start == 0x0000) {
-		send_error(sk, ipdu[0], start, ATT_ECODE_INVALID_HANDLE);
+		send_error(attio, ipdu[0], start, ATT_ECODE_INVALID_HANDLE);
 		return;
 	}
 
@@ -791,15 +857,15 @@ static void read_by_group(int sk, const uint8_t *ipdu, ssize_t ilen)
 	  * security verification.
 	  */
 	if (bt_uuid_cmp(&pattern, &primary_uuid) != 0) {
-		send_error(sk, ipdu[0], start, ATT_ECODE_UNSUPP_GRP_TYPE);
+		send_error(attio, ipdu[0], start, ATT_ECODE_UNSUPP_GRP_TYPE);
 		return;
 	}
 
-	read_by_group_resp(sk, start, end, &pattern);
+	read_by_group_resp(attio, start, end, &pattern);
 }
 
-static void read_by_type_result(int sk, uint8_t *value, size_t vlen,
-								void *user_data)
+static void read_by_type_result(struct attio *attio, uint8_t *value,
+						size_t vlen, void *user_data)
 {
 	struct procedure_data *proc = user_data;
 	GList *head = proc->match;
@@ -843,17 +909,17 @@ static void read_by_type_result(int sk, uint8_t *value, size_t vlen,
 	/* Getting the next attribute */
 	attr = proc->match->data;
 
-	read_by_type_result(sk, attr->value, attr->value_len, proc);
+	read_by_type_result(attio, attr->value, attr->value_len, proc);
 
 	return;
 
 send:
-	write_pdu(sk, proc->opdu, proc->olen);
+	pdu_send(proc->attio, proc->opdu, proc->olen);
 	g_list_free(proc->match);
 	g_free(proc);
 }
 
-static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
+static void read_by_type(struct attio *attio, const uint8_t *ipdu, size_t ilen)
 {
 	struct procedure_data *proc;
 	struct btd_attribute *attr;
@@ -862,18 +928,19 @@ static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
 	bt_uuid_t uuid;
 
 	if (dec_read_by_type_req(ipdu, ilen, &start, &end, &uuid) == 0) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
 		return;
 	}
 
 	DBG("Read By Type: 0x%04x to 0x%04x", start, end);
 
 	if (start == 0x0000 || start > end) {
-		send_error(sk, ipdu[0], start, ATT_ECODE_INVALID_HANDLE);
+		send_error(attio, ipdu[0], start, ATT_ECODE_INVALID_HANDLE);
 		return;
 	}
 
 	proc = g_malloc0(sizeof(*proc));
+	proc->attio = attio;
 
 	for (list = local_attribute_db; list; list = g_list_next(list)) {
 		attr = list->data;
@@ -895,13 +962,13 @@ static void read_by_type(int sk, const uint8_t *ipdu, size_t ilen)
 	}
 
 	if (proc->match == NULL) {
-		send_error(sk, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
+		send_error(attio, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
 		g_free(proc);
 		return;
 	}
 
 	attr = proc->match->data;
-	read_by_type_result(sk, attr->value, attr->value_len, proc);
+	read_by_type_result(attio, attr->value, attr->value_len, proc);
 }
 
 static bool validate_att_operation(GList *attr_node, uint8_t opcode)
@@ -970,44 +1037,43 @@ static void read_request_result(int err, uint8_t *value, size_t len,
 							void *user_data)
 {
 	struct procedure_data *proc = user_data;
-	int sk = io_get_fd(proc->io);
 
 	if (err) {
-		send_error(sk, ATT_OP_READ_REQ, proc->handle,
+		send_error(proc->attio, ATT_OP_READ_REQ, proc->handle,
 						errno_to_att(err));
 		return;
 	}
 
 	proc->olen = enc_read_resp(value, len, proc->opdu, sizeof(proc->opdu));
-	write_pdu(sk, proc->opdu, proc->olen);
+	pdu_send(proc->attio, proc->opdu, proc->olen);
 	g_free(proc);
 }
 
-static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
+static void read_request(struct attio *attio, const uint8_t *ipdu, size_t ilen)
 {
 	struct procedure_data *proc;
 	uint16_t handle;
 	GList *list;
 	struct btd_device *device;
 	struct btd_attribute *attr;
-	int sk = io_get_fd(io);
+	int sk = io_get_fd(attio->io);
 
 	if (dec_read_req(ipdu, ilen, &handle) == 0) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
 		return;
 	}
 
 	list = g_list_find_custom(local_attribute_db,
 				GUINT_TO_POINTER(handle), find_by_handle);
 	if (!list) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_HANDLE);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_HANDLE);
 		return;
 	}
 
 	attr = list->data;
 
 	if (!validate_att_operation(list, ATT_OP_READ_REQ)) {
-		send_error(sk, ATT_OP_READ_REQ, attr->handle,
+		send_error(attio, ATT_OP_READ_REQ, attr->handle,
 						ATT_ECODE_READ_NOT_PERM);
 		return;
 	}
@@ -1018,13 +1084,13 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 		size_t olen = enc_read_resp(attr->value, attr->value_len, opdu,
 								sizeof(opdu));
 
-		write_pdu(sk, opdu, olen);
+		pdu_send(attio, opdu, olen);
 		return;
 	}
 
 	/* Dynamic value provided by external entity */
 	if (attr->read_cb == NULL) {
-		send_error(sk, ATT_OP_READ_REQ, handle,
+		send_error(attio, ATT_OP_READ_REQ, handle,
 						ATT_ECODE_READ_NOT_PERM);
 		return;
 	}
@@ -1034,7 +1100,7 @@ static void read_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	 * is mapped to a simple proxy function call.
 	 */
 	proc = g_malloc0(sizeof(*proc));
-	proc->io = io;
+	proc->attio = attio;
 	proc->handle = handle;
 
 	device = sock_get_device(sk);
@@ -1081,7 +1147,6 @@ static void write_request_result(int err, void *user_data)
 {
 	struct procedure_data *proc = user_data;
 	uint16_t olen;
-	int sk = io_get_fd(proc->io);
 
 	DBG("Write Request (0x%04X) status: %d", proc->handle, err);
 
@@ -1092,11 +1157,12 @@ static void write_request_result(int err, void *user_data)
 	else
 		olen = enc_write_resp(proc->opdu);
 
-	write_pdu(sk, proc->opdu, olen);
+	pdu_send(proc->attio, proc->opdu, olen);
 	g_free(proc);
 }
 
-static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
+static void write_request(struct attio *attio, const uint8_t *ipdu,
+							size_t ilen)
 {
 	struct procedure_data *proc;
 	struct btd_attribute *attr;
@@ -1105,29 +1171,29 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	size_t vlen;
 	uint16_t handle;
 	uint8_t value[ATT_DEFAULT_LE_MTU];
-	int sk = io_get_fd(io);
+	int sk = io_get_fd(attio->io);
 
 	if (dec_write_req(ipdu, ilen, &handle, value, &vlen) == 0) {
-		send_error(sk, ipdu[0], handle, ATT_ECODE_INVALID_PDU);
+		send_error(attio, ipdu[0], handle, ATT_ECODE_INVALID_PDU);
 		return;
 	}
 
 	list = g_list_find_custom(local_attribute_db, GUINT_TO_POINTER(handle),
 								find_by_handle);
 	if (!list) {
-		send_error(sk, ipdu[0], handle, ATT_ECODE_INVALID_HANDLE);
+		send_error(attio, ipdu[0], handle, ATT_ECODE_INVALID_HANDLE);
 		return;
 	}
 
 	attr = list->data;
 
 	if (attr->write_cb == NULL) {
-		send_error(sk, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
+		send_error(attio, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
 		return;
 	}
 
 	if (!validate_att_operation(list, ATT_OP_WRITE_REQ)) {
-		send_error(sk, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
+		send_error(attio, ipdu[0], handle, ATT_ECODE_WRITE_NOT_PERM);
 		return;
 	}
 
@@ -1137,7 +1203,7 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	 */
 
 	proc = g_malloc0(sizeof(*proc));
-	proc->io = io;
+	proc->attio = attio;
 	proc->handle = handle;
 
 	DBG("Write Request (0x%04X)", proc->handle);
@@ -1145,7 +1211,8 @@ static void write_request(struct io *io, const uint8_t *ipdu, size_t ilen)
 	attr->write_cb(device, attr, value, vlen, write_request_result, proc);
 }
 
-static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
+static void find_info_request(struct attio *attio, const uint8_t *ipdu,
+								size_t ilen)
 {
 	struct btd_attribute *attr;
 	size_t pairlen = 0, olen = 0, uuid_len;
@@ -1155,12 +1222,12 @@ static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
 	GList *list;
 
 	if (dec_find_info_req(ipdu, ilen, &start, &end) == 0) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_PDU);
 		return;
 	}
 
 	if (start == 0x0000 || start > end) {
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_INVALID_HANDLE);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_INVALID_HANDLE);
 		return;
 	}
 
@@ -1217,7 +1284,7 @@ static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
 	}
 
 	if (olen == 0) {
-		send_error(sk, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
+		send_error(attio, ipdu[0], start, ATT_ECODE_ATTR_NOT_FOUND);
 		return;
 	}
 
@@ -1225,11 +1292,12 @@ static void find_info_request(int sk, const uint8_t *ipdu, size_t ilen)
 	opdu[0] = ATT_OP_FIND_INFO_RESP;
 	opdu[1] = format;
 
-	write_pdu(sk, opdu, olen);
+	pdu_send(attio, opdu, olen);
 }
 
 static bool channel_handler_cb(struct io *io, void *user_data)
 {
+	struct attio *attio = user_data;
 	uint8_t ipdu[ATT_DEFAULT_LE_MTU];
 	ssize_t ilen;
 	int sk = io_get_fd(io);
@@ -1253,26 +1321,26 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
 	case ATT_OP_SIGNED_WRITE_CMD:
-		send_error(sk, ipdu[0], 0x0000, ATT_ECODE_REQ_NOT_SUPP);
+		send_error(attio, ipdu[0], 0x0000, ATT_ECODE_REQ_NOT_SUPP);
 		break;
 
 	case ATT_OP_READ_BY_GROUP_REQ:
-		read_by_group(sk, ipdu, ilen);
+		read_by_group(attio, ipdu, ilen);
 		break;
 	case ATT_OP_READ_BY_TYPE_REQ:
-		read_by_type(sk, ipdu, ilen);
+		read_by_type(attio, ipdu, ilen);
 		break;
 	case ATT_OP_READ_REQ:
-		read_request(io, ipdu, ilen);
+		read_request(attio, ipdu, ilen);
 		break;
 	case ATT_OP_WRITE_CMD:
 		write_cmd(sk, ipdu, ilen);
 		break;
 	case ATT_OP_WRITE_REQ:
-		write_request(io, ipdu, ilen);
+		write_request(attio, ipdu, ilen);
 		break;
 	case ATT_OP_FIND_INFO_REQ:
-		find_info_request(sk, ipdu, ilen);
+		find_info_request(attio, ipdu, ilen);
 		break;
 
 	/* Responses */
@@ -1301,24 +1369,25 @@ static bool channel_handler_cb(struct io *io, void *user_data)
 
 static void channel_watch_destroy(void *user_data)
 {
-	struct io *io = user_data;
+	struct attio *attio = user_data;
 
-	io_destroy(io);
-	iolist = g_slist_remove(iolist, io);
+	io_destroy(attio->io);
+	iolist = g_slist_remove(iolist, attio);
+	g_free(attio);
 }
 
 static bool write_service_changed_cb(struct io *io, void *user_data)
 {
+	struct attio *attio = user_data;
 	uint8_t range[] = { 0x01, 0x00, 0xff, 0xff};
 	uint8_t opdu[ATT_DEFAULT_LE_MTU];
-	int sk = io_get_fd(io);
 	size_t olen;
 
 	DBG("ATT: Sending <<Service Changed>>");
 
 	olen = enc_indication(service_changed->handle, range, sizeof(range),
 							opdu, sizeof(opdu));
-	write_pdu(sk, opdu, olen);
+	pdu_send(attio, opdu, olen);
 
 	return false;
 }
@@ -1327,7 +1396,7 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 {
 	struct sockaddr_un uaddr;
 	socklen_t len = sizeof(uaddr);
-	struct io *nio;
+	struct attio *attio;
 	int err, nsk, sk;
 
 	sk = io_get_fd(io);
@@ -1340,12 +1409,14 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	}
 
 	DBG("ATT UNIX socket: %d", nsk);
-	nio = io_new(nsk);
+	attio = new0(struct attio, 1);
+	attio->io = io_new(nsk);
+	attio->writer_active = false;
 
-	iolist = g_slist_append(iolist, nio);
+	iolist = g_slist_append(iolist, attio);
 
-	io_set_close_on_destroy(nio, true);
-	io_set_read_handler(nio, channel_handler_cb, nio,
+	io_set_close_on_destroy(attio->io, true);
+	io_set_read_handler(attio->io, channel_handler_cb, attio,
 						channel_watch_destroy);
 
 	/*
@@ -1353,7 +1424,7 @@ static bool unix_accept_cb(struct io *io, void *user_data)
 	 * indication when the link is established ignoring if the device is
 	 * bonded or not.
 	 */
-	io_set_write_handler(nio, write_service_changed_cb, NULL, NULL);
+	io_set_write_handler(attio->io, write_service_changed_cb, attio, NULL);
 
 	return true;
 }
