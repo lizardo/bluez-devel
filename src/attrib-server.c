@@ -65,6 +65,7 @@ struct gatt_server {
 	GIOChannel *le_io;
 	GList *database;
 	GSList *clients;
+	GSList *attr_callbacks;
 };
 
 struct gatt_channel {
@@ -85,6 +86,18 @@ struct group_elem {
 	uint16_t end;
 	uint8_t *data;
 	uint16_t len;
+};
+
+struct attr_cb_data {
+	/* Old GATT dabase API */
+	struct btd_adapter *adapter;
+	struct attribute *attr;
+	int err;
+
+	/* New GATT database API */
+	struct btd_attribute *new_attr;
+	btd_attr_read_t read_cb;
+	btd_attr_write_t write_cb;
 };
 
 static bt_uuid_t prim_uuid = {
@@ -124,6 +137,7 @@ static void channel_free(struct gatt_channel *channel)
 static void gatt_server_free(struct gatt_server *server)
 {
 	g_list_free_full(server->database, attrib_free);
+	g_slist_free_full(server->attr_callbacks, g_free);
 
 	if (server->l2cap_io != NULL) {
 		g_io_channel_shutdown(server->l2cap_io, FALSE, NULL);
@@ -1239,64 +1253,57 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 	g_attrib_unref(attrib);
 }
 
-struct attr_cb_data {
-	struct btd_device *device;
-	struct attribute *attr;
-	int err;
-};
-
 static void attr_read_result(int err, uint8_t *value, size_t len,
 								void *user_data)
 {
-	struct attr_cb_data *data = user_data;
-	struct btd_adapter *adapter = device_get_adapter(data->device);
+	struct attr_cb_data *cb_data = user_data;
 
 	if (!err)
-		err = attrib_db_update(adapter, data->attr->handle, NULL, value,
-							len, &data->attr);
+		err = attrib_db_update(cb_data->adapter, cb_data->attr->handle,
+					NULL, value, len, &cb_data->attr);
 
-	data->err = err;
+	cb_data->err = err;
 }
 
 static void attr_write_result(int err, void *user_data)
 {
-	struct attr_cb_data *data = user_data;
+	struct attr_cb_data *cb_data = user_data;
 
-	data->err = err;
+	cb_data->err = err;
 }
 
 static uint8_t attr_read_cb(struct attribute *a, struct btd_device *device,
 								void *user_data)
 {
-	struct btd_attribute *attr = user_data;
-	struct attr_cb_data data;
+	struct attr_cb_data *cb_data = user_data;
 
-	data.device = device;
-	data.attr = a;
+	cb_data->adapter = device_get_adapter(device);
+	cb_data->attr = a;
 
-	btd_gatt_read_attribute(attr, attr_read_result, &data);
+	/* NOTE: This mechanism will not work for external services, because
+	 * old attribute API requires a synchronous callback */
+	cb_data->read_cb(device, cb_data->new_attr, attr_read_result,
+								user_data);
 
 	/* NOTE: This only works for "synchronous" callbacks, whose result
 	 * callback is called on the same mainloop iteration */
 
 	/* FIXME: map errno codes to ATT error codes */
-	return data.err ? ATT_ECODE_UNLIKELY : 0;
+	return cb_data->err ? ATT_ECODE_UNLIKELY : 0;
 }
 
 static uint8_t attr_write_cb(struct attribute *a, struct btd_device *device,
 								void *user_data)
 {
-	struct btd_attribute *attr = user_data;
-	struct attr_cb_data data;
+	struct attr_cb_data *cb_data = user_data;
 
-	btd_gatt_write_attribute(attr, a->data, a->len, attr_write_result,
-									&data);
-
-	/* NOTE: This only works for "synchronous" callbacks, whose result
-	 * callback is called on the same mainloop iteration */
+	/* NOTE: This mechanism will not work for external services, because
+	 * old attribute API requires a synchronous callback */
+	cb_data->write_cb(device, cb_data->new_attr, a->data, a->len,
+						attr_write_result, user_data);
 
 	/* FIXME: map errno codes to ATT error codes */
-	return data.err ? ATT_ECODE_UNLIKELY : 0;
+	return cb_data->err ? ATT_ECODE_UNLIKELY : 0;
 }
 
 static void attrib_db_import(struct btd_attribute *attr, uint16_t handle,
@@ -1306,11 +1313,20 @@ static void attrib_db_import(struct btd_attribute *attr, uint16_t handle,
 {
 	struct gatt_server *server = user_data;
 	struct attribute *a;
+	struct attr_cb_data *cb_data;
+
+	cb_data = g_new0(struct attr_cb_data, 1);
+	cb_data->err = EINVAL;
+	cb_data->new_attr = attr;
+	cb_data->read_cb = read_cb;
+	cb_data->write_cb = write_cb;
+	server->attr_callbacks = g_slist_append(server->attr_callbacks,
+								cb_data);
 
 	a = attrib_db_add_new(server, handle, uuid, ATT_NONE, ATT_NOT_PERMITTED,
 							value, value_len);
 
-	a->cb_user_data = attr;
+	a->cb_user_data = cb_data;
 	if (read_cb)
 		a->read_cb = attr_read_cb;
 	if (write_cb)
