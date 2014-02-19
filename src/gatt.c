@@ -97,6 +97,11 @@ static uint16_t next_handle = 0x0001;
 static struct btd_attribute *gatt, *gap;
 static struct btd_attribute *service_changed;
 
+/* Callbacks used for notifying attribute database changes */
+static btd_attr_func_t attr_added_cb;
+static btd_attr_func_t attr_removed_cb;
+static void *attr_cb_user_data;
+
 static void write_watch_destroy(void *user_data)
 {
 	struct attio *attio = user_data;
@@ -492,6 +497,11 @@ static int local_database_add(uint16_t handle, struct btd_attribute *attr)
 
 	local_attribute_db = g_list_append(local_attribute_db, attr);
 
+	if (attr_added_cb)
+		attr_added_cb(attr, attr->handle, &attr->type, attr->read_cb,
+				attr->write_cb, attr->value_len, attr->value,
+				attr_cb_user_data);
+
 	return 0;
 }
 
@@ -506,6 +516,15 @@ void btd_gatt_database_for_each(btd_attr_func_t func, void *user_data)
 				attr->write_cb, attr->value_len, attr->value,
 				user_data);
 	}
+}
+
+void btd_gatt_database_notify_update(btd_attr_func_t attr_added,
+						btd_attr_func_t attr_removed,
+						void *user_data)
+{
+	attr_added_cb = attr_added;
+	attr_removed_cb = attr_removed;
+	attr_cb_user_data = user_data;
 }
 
 static int cmp_uuid(const void *a, const void *b)
@@ -589,6 +608,20 @@ struct btd_attribute *btd_gatt_add_service(const bt_uuid_t *uuid)
 	return attr;
 }
 
+static GList *remove_local_attr(GList *node)
+{
+	struct btd_attribute *attr = node->data;
+
+	if (attr_removed_cb)
+		attr_removed_cb(attr, attr->handle, &attr->type, attr->read_cb,
+				attr->write_cb, attr->value_len, attr->value,
+				attr_cb_user_data);
+
+	g_free(node->data);
+
+	return g_list_delete_link(node, node);
+}
+
 void btd_gatt_remove_service(struct btd_attribute *service)
 {
 	GList *list = g_list_find(local_attribute_db, service);
@@ -598,14 +631,11 @@ void btd_gatt_remove_service(struct btd_attribute *service)
 		return;
 
 	/* Remove service declaration attribute */
-	g_free(list->data);
-	list = g_list_delete_link(list, list);
+	list = remove_local_attr(list);
 
 	/* Remove all characteristics until next service declaration */
-	while (list && !is_service(list->data)) {
-		g_free(list->data);
-		list = g_list_delete_link(list, list);
-	}
+	while (list && !is_service(list->data))
+		list = remove_local_attr(list);
 
 	/*
 	 * When removing the first node, local attribute database head
