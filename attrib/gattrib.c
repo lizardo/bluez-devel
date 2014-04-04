@@ -59,6 +59,7 @@ struct _GAttrib {
 	GDestroyNotify destroy;
 	gpointer destroy_user_data;
 	bool stale;
+	bool encrypted;
 };
 
 struct command {
@@ -714,12 +715,20 @@ gboolean g_attrib_is_encrypted(GAttrib *attrib)
 {
 	BtIOSecLevel sec_level;
 
+	/* If the link is already encrypted, do not ask the kernel again. There
+	 * is no way for a encrypted link become unencrypted. */
+	if (attrib->encrypted)
+		return TRUE;
+
 	if (!bt_io_get(attrib->io, NULL,
 			BT_IO_OPT_SEC_LEVEL, &sec_level,
 			BT_IO_OPT_INVALID))
 		return FALSE;
 
-	return sec_level > BT_IO_SEC_LOW;
+	if (sec_level > BT_IO_SEC_LOW)
+		attrib->encrypted = true;
+
+	return attrib->encrypted ? TRUE : FALSE;
 }
 
 gboolean g_attrib_unregister(GAttrib *attrib, guint id)
