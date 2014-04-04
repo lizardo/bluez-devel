@@ -375,10 +375,9 @@ static struct attribute *attrib_db_add_new(struct gatt_server *server,
 	return a;
 }
 
-static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
-								int reqs)
+static uint8_t att_check_reqs(GAttrib *attrib, uint8_t opcode, int reqs)
 {
-	gboolean encrypted = g_attrib_is_encrypted(channel->attrib);
+	gboolean encrypted = g_attrib_is_encrypted(attrib);
 
 	/* FIXME: currently, it is assumed an encrypted link is enough for
 	 * authentication. This will allow to enable the SMP negotiation once
@@ -465,8 +464,8 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 		if (last_size && (last_size != a->len))
 			break;
 
-		status = att_check_reqs(channel, ATT_OP_READ_BY_GROUP_REQ,
-								a->read_req);
+		status = att_check_reqs(channel->attrib,
+					ATT_OP_READ_BY_GROUP_REQ, a->read_req);
 
 		if (status == 0x00 && a->read_cb)
 			status = a->read_cb(a, channel->device,
@@ -560,8 +559,8 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 		if (bt_uuid_cmp(&a->uuid, uuid)  != 0)
 			continue;
 
-		status = att_check_reqs(channel, ATT_OP_READ_BY_TYPE_REQ,
-								a->read_req);
+		status = att_check_reqs(channel->attrib,
+					ATT_OP_READ_BY_TYPE_REQ, a->read_req);
 
 		if (status == 0x00 && a->read_cb)
 			status = a->read_cb(a, channel->device,
@@ -818,7 +817,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 		return enc_read_resp(config, sizeof(config), pdu, len);
 	}
 
-	status = att_check_reqs(channel, ATT_OP_READ_REQ, a->read_req);
+	status = att_check_reqs(channel->attrib, ATT_OP_READ_REQ, a->read_req);
 
 	if (status == 0x00 && a->read_cb)
 		status = a->read_cb(a, channel->device, a->cb_user_data);
@@ -860,7 +859,8 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 								pdu, len);
 	}
 
-	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_req);
+	status = att_check_reqs(channel->attrib, ATT_OP_READ_BLOB_REQ,
+								a->read_req);
 
 	if (status == 0x00 && a->read_cb)
 		status = a->read_cb(a, channel->device, a->cb_user_data);
@@ -889,7 +889,8 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 
 	a = l->data;
 
-	status = att_check_reqs(channel, ATT_OP_WRITE_REQ, a->write_req);
+	status = att_check_reqs(channel->attrib, ATT_OP_WRITE_REQ,
+								a->write_req);
 	if (status)
 		return enc_error_resp(ATT_OP_WRITE_REQ, handle, status, pdu,
 									len);
