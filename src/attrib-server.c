@@ -76,7 +76,6 @@ struct gatt_channel {
 	guint mtu;
 	gboolean le;
 	guint id;
-	gboolean encrypted;
 	struct gatt_server *server;
 	guint cleanup_id;
 	struct btd_device *device;
@@ -379,13 +378,13 @@ static struct attribute *attrib_db_add_new(struct gatt_server *server,
 static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
 								int reqs)
 {
+	gboolean encrypted = g_attrib_is_encrypted(channel->attrib);
+
 	/* FIXME: currently, it is assumed an encrypted link is enough for
 	 * authentication. This will allow to enable the SMP negotiation once
 	 * it is on upstream kernel. High security level should be mapped
 	 * to authentication and medium to encryption permission. */
-	if (!channel->encrypted)
-		channel->encrypted = g_attrib_is_encrypted(channel->attrib);
-	if (reqs == ATT_AUTHENTICATION && !channel->encrypted)
+	if (reqs == ATT_AUTHENTICATION && !encrypted)
 		return ATT_ECODE_AUTHENTICATION;
 	else if (reqs == ATT_AUTHORIZATION)
 		return ATT_ECODE_AUTHORIZATION;
